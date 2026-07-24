@@ -1,0 +1,15 @@
+{
+  "name": "sync-centros-escolares",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sincroniza el catálogo de Centros Escolares desde Google Sheets hacia Supabase.",
+  "main": "scripts/sync-centros-escolares.js",
+  "scripts": {
+    "sync": "node scripts/sync-centros-escolares.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "dotenv": "^16.4.5",
+    "googleapis": "^144.0.0"
+  }
+}

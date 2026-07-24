@@ -1,0 +1,18 @@
+# Nunca subir credenciales reales
+.env
+.env.*
+!.env.example
+
+# Cualquier archivo .json de credenciales (la cuenta de servicio de Google se
+# descarga como "nombre-del-proyecto-xxxxxxxx.json", sin un patrón fijo de
+# nombre, así que excluimos TODOS los .json excepto los propios de Node):
+*.json
+!package.json
+!package-lock.json
+
+# Dependencias (se reinstalan con "npm install", no hace falta subirlas)
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
