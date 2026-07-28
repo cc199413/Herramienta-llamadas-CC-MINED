@@ -2049,7 +2049,8 @@ function CampaignWizard({ctx,onClose}){
     if(selMode==="todos")return schools;
     if(selMode==="manual")return schools.filter(s=>manual.includes(s.codigo));
     const {tipo,valor}=grupo;
-    return schools.filter(s=>{if(tipo==="departamento")return s.departamento===valor;if(tipo==="municipio")return s.municipio===valor;if(tipo==="distrito")return s.distrito===valor;if(tipo==="programa")return s.programa==="Despega";if(tipo==="modernizacion")return s.modernizacion;if(tipo==="fase")return String(s.fase)===String(valor);if(tipo==="control")return s.control;return false;});
+    const igual=(a,b)=>String(a||"").trim().toLowerCase()===String(b||"").trim().toLowerCase();
+    return schools.filter(s=>{if(tipo==="departamento")return igual(s.departamento,valor);if(tipo==="municipio")return igual(s.municipio,valor);if(tipo==="distrito")return igual(s.distrito,valor);if(tipo==="programa")return igual(s.programa,"Despega");if(tipo==="modernizacion")return s.modernizacion;if(tipo==="fase")return String(s.fase)===String(valor);if(tipo==="control")return s.control;return false;});
   },[selMode,manual,grupo,schools,uploaded]);
   const agAvail=pool.filter(a=>turno==="Todos"||a.turno===turno);
   const finalAgents=agAvail.filter(a=>agSel.includes(a.id));
