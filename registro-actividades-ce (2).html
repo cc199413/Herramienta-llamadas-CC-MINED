@@ -1,0 +1,2603 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Consola de Llamadas · MINED</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#eef1f6; --grid:#e2e7ef;
+    --surface:#ffffff; --surface-2:#f6f8fb; --surface-3:#eef2f8;
+    --border:#dce2ec; --border-strong:#c6cedb;
+    --text:#101b2e; --text-dim:#5a6678; --text-faint:#8c97a8;
+    --navy:#13294b; --navy-2:#1c3a66; --navy-ink:#e9eefb;
+    --accent:#f2a900; --accent-ink:#3a2a00;
+    --success:#0f9d58; --success-bg:#e3f4ea;
+    --danger:#d9342b; --danger-bg:#fbe6e4;
+    --warn:#e08a00; --warn-bg:#fcefd6;
+    --info:#2563eb; --info-bg:#e4ecfd;
+    --neutral:#64748b; --neutral-bg:#eef1f5;
+    --violet:#7c3aed; --violet-bg:#efe7fd;
+    --teal:#0e8a86; --teal-bg:#dff3f2;
+    --rose:#c0267a; --rose-bg:#fbe3ee;
+    --shadow:0 1px 2px rgba(16,27,46,.06), 0 8px 24px rgba(16,27,46,.06);
+    --shadow-lg:0 24px 60px rgba(16,27,46,.22);
+    --r:12px; --r-sm:8px;
+    --mono:ui-monospace,SFMono-Regular,Menlo,"JetBrains Mono",monospace;
+  }
+  [data-theme="dark"]{
+    --bg:#0c1422; --grid:#16223a;
+    --surface:#111d31; --surface-2:#15233c; --surface-3:#1a2c49;
+    --border:#24344f; --border-strong:#32466a;
+    --text:#e7edf8; --text-dim:#9aa8bf; --text-faint:#6f7e96;
+    --navy:#0a1322; --navy-2:#12243f; --navy-ink:#e9eefb;
+    --accent:#ffb71a; --accent-ink:#2a1d00;
+    --success:#2fbd77; --success-bg:#10301f;
+    --danger:#f0584e; --danger-bg:#3a1310;
+    --warn:#f2a83b; --warn-bg:#34250a;
+    --info:#5b8def; --info-bg:#101f3d;
+    --neutral:#8595ab; --neutral-bg:#1a2740;
+    --violet:#a578f0; --violet-bg:#221440;
+    --teal:#34c3bd; --teal-bg:#0d2b2a;
+    --rose:#e65ba8; --rose-bg:#33122a;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    --shadow-lg:0 30px 70px rgba(0,0,0,.6);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text);
+    -webkit-font-smoothing:antialiased;font-size:14px;line-height:1.45;
+  }
+  h1,h2,h3,h4{font-family:"Space Grotesk",Inter,sans-serif;margin:0;letter-spacing:-.01em}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  input,select,textarea{font-family:inherit;font-size:14px}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:20px;border:2px solid var(--bg)}
+
+  /* ---------- Login ---------- */
+  .login-wrap{min-height:100%;display:grid;grid-template-columns:1.05fr .95fr}
+  @media(max-width:860px){.login-wrap{grid-template-columns:1fr}.login-hero{display:none}}
+  .login-hero{
+    background:
+      radial-gradient(900px 500px at 12% -10%, rgba(242,169,0,.18), transparent 60%),
+      linear-gradient(160deg,var(--navy),var(--navy-2));
+    color:var(--navy-ink);padding:54px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;
+  }
+  .login-hero .crest{display:flex;align-items:center;gap:12px;font-weight:600;letter-spacing:.02em}
+  .login-hero .crest .mark{width:38px;height:38px;border-radius:10px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:"Space Grotesk";font-weight:700;font-size:18px}
+  .login-hero h1{font-size:46px;line-height:1.02;margin:0 0 14px;font-weight:700}
+  .login-hero .lead{color:#c7d2e8;max-width:30ch;font-size:15px}
+  .pulse-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}
+  .pulse{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:7px 12px;font-size:12.5px;color:#dbe4f3}
+  .pulse i{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .login-hero .foot{color:#8ca0c2;font-size:12px}
+  .ticker{position:absolute;inset:auto -40px 120px -40px;opacity:.07;font-family:var(--mono);font-size:13px;white-space:nowrap;pointer-events:none}
+
+  .login-panel{display:flex;align-items:center;justify-content:center;padding:40px 28px;background:var(--surface)}
+  .login-card{width:100%;max-width:380px}
+  .login-card h2{font-size:24px;margin-bottom:4px}
+  .login-card .sub{color:var(--text-dim);margin-bottom:26px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12.5px;font-weight:600;color:var(--text-dim);margin-bottom:6px}
+  .input{width:100%;padding:11px 12px;border:1px solid var(--border-strong);border-radius:var(--r-sm);background:var(--surface);color:var(--text);transition:.15s}
+  .input:focus{outline:none;border-color:var(--navy-2);box-shadow:0 0 0 3px color-mix(in srgb,var(--navy-2) 20%,transparent)}
+  [data-theme="dark"] .input:focus{box-shadow:0 0 0 3px rgba(91,141,239,.25);border-color:var(--info)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;border-radius:var(--r-sm);font-weight:600;font-size:14px;transition:.15s;border:1px solid transparent}
+  .btn-primary{background:var(--navy);color:#fff;width:100%}
+  .btn-primary:hover{background:var(--navy-2)}
+  .btn-accent{background:var(--accent);color:var(--accent-ink)}
+  .btn-accent:hover{filter:brightness(1.05)}
+  .btn-ghost{background:var(--surface-2);color:var(--text);border-color:var(--border)}
+  .btn-ghost:hover{background:var(--surface-3)}
+  .btn-sm{padding:7px 11px;font-size:13px}
+  .btn-danger{background:var(--danger-bg);color:var(--danger)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .link{color:var(--info);font-weight:600;cursor:pointer;background:none}
+  .alert{padding:10px 12px;border-radius:var(--r-sm);font-size:13px;margin-bottom:14px}
+  .alert-err{background:var(--danger-bg);color:var(--danger)}
+  .alert-ok{background:var(--success-bg);color:var(--success)}
+  .alert-info{background:var(--info-bg);color:var(--info)}
+  .hint{font-size:12px;color:var(--text-faint);margin-top:14px;line-height:1.5}
+
+  /* ---------- Shell ---------- */
+  .shell{display:grid;grid-template-columns:248px 1fr;min-height:100%}
+  @media(max-width:780px){.shell{grid-template-columns:1fr}.sidebar{display:none}}
+  .sidebar{background:linear-gradient(180deg,var(--navy),var(--navy-2));color:var(--navy-ink);display:flex;flex-direction:column;padding:18px 14px;position:sticky;top:0;height:100vh}
+  .brand{display:flex;align-items:center;gap:11px;padding:6px 8px 18px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:14px}
+  .brand .mark{width:34px;height:34px;border-radius:9px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:"Space Grotesk";font-weight:700}
+  .brand b{font-family:"Space Grotesk";font-size:15px;display:block;line-height:1.1}
+  .brand span{font-size:11px;color:#9fb1cf}
+  .nav-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:#7f93b5;padding:8px 10px 4px}
+  .nav-item{display:flex;align-items:center;gap:11px;padding:10px 11px;border-radius:10px;color:#c5d1e6;font-weight:500;font-size:14px;cursor:pointer;transition:.13s;width:100%;text-align:left}
+  .nav-item:hover{background:rgba(255,255,255,.07);color:#fff}
+  .nav-item.active{background:rgba(242,169,0,.14);color:#fff;box-shadow:inset 2px 0 0 var(--accent)}
+  .nav-item .ico{width:18px;text-align:center;opacity:.9}
+  .sidebar .spacer{flex:1}
+  .me{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:rgba(255,255,255,.05)}
+  .avatar{width:32px;height:32px;border-radius:8px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:700;font-size:13px;flex:none}
+  .me b{font-size:13px;display:block}.me span{font-size:11px;color:#9fb1cf}
+
+  .main{display:flex;flex-direction:column;min-width:0}
+  .topbar{display:flex;align-items:center;gap:14px;padding:14px 24px;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--surface) 86%,transparent);backdrop-filter:blur(8px);position:sticky;top:0;z-index:20}
+  .topbar h3{font-size:18px}
+  .topbar .crumb{color:var(--text-faint);font-size:12.5px}
+  .topbar .spacer{flex:1}
+  .content{padding:22px 24px 60px;max-width:1280px;width:100%}
+
+  .toggle{display:inline-flex;border:1px solid var(--border);border-radius:999px;background:var(--surface-2);padding:3px}
+  .toggle button{padding:6px 10px;border-radius:999px;font-size:12.5px;color:var(--text-dim);font-weight:600}
+  .toggle button.on{background:var(--navy);color:#fff}
+
+  /* ---------- Generic ---------- */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow)}
+  .card-pad{padding:18px}
+  .grid{display:grid;gap:16px}
+  .row{display:flex;gap:16px;flex-wrap:wrap}
+  .stat{display:flex;flex-direction:column;gap:6px}
+  .stat .k{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);font-weight:600}
+  .stat .v{font-family:"Space Grotesk";font-size:28px;font-weight:700;line-height:1}
+  .stat .meta{font-size:12px;color:var(--text-dim)}
+  .section-title{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);font-weight:600;margin:6px 0 12px}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);font-weight:600;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--surface-2);position:sticky;top:0}
+  td{padding:11px 12px;border-bottom:1px solid var(--grid);vertical-align:middle}
+  tr.clickable{cursor:pointer}
+  tr.clickable:hover td{background:var(--surface-2)}
+  tr.sel td{background:color-mix(in srgb,var(--accent) 12%,transparent)}
+  tfoot td{border-top:2px solid var(--border-strong);border-bottom:none;background:var(--surface-2)}
+  .tbl-wrap{overflow:auto;border:1px solid var(--border);border-radius:var(--r);background:var(--surface)}
+
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+  .pill i{width:7px;height:7px;border-radius:50%;display:inline-block}
+  .p-success{background:var(--success-bg);color:var(--success)}
+  .p-danger{background:var(--danger-bg);color:var(--danger)}
+  .p-warn{background:var(--warn-bg);color:var(--warn)}
+  .p-info{background:var(--info-bg);color:var(--info)}
+  .p-neutral{background:var(--neutral-bg);color:var(--neutral)}
+  .p-violet{background:var(--violet-bg);color:var(--violet)}
+  .p-teal{background:var(--teal-bg);color:var(--teal)}
+  .p-rose{background:var(--rose-bg);color:var(--rose)}
+  .p-accent{background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--accent-ink)}
+  [data-theme="dark"] .p-accent{color:var(--accent)}
+
+  .tag{display:inline-block;padding:2px 7px;border-radius:6px;font-size:11px;font-weight:600;background:var(--surface-3);color:var(--text-dim);border:1px solid var(--border)}
+
+  .chip-btn{padding:8px 12px;border-radius:10px;border:1px solid var(--border-strong);background:var(--surface);font-weight:600;font-size:13px;display:flex;align-items:center;gap:7px;transition:.13s}
+  .chip-btn:hover{border-color:var(--navy-2)}
+  .chip-btn.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+  .seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:3px;gap:2px}
+  .seg button{padding:7px 12px;border-radius:8px;font-size:13px;font-weight:600;color:var(--text-dim)}
+  .seg button.on{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+
+  .timer{font-family:var(--mono);font-size:34px;font-weight:700;letter-spacing:.02em}
+  .live-dot{width:9px;height:9px;border-radius:50%;background:var(--danger);display:inline-block;animation:blink 1.1s infinite}
+  @keyframes blink{50%{opacity:.25}}
+
+  .modal-bg{position:fixed;inset:0;background:rgba(8,14,26,.55);backdrop-filter:blur(3px);display:grid;place-items:center;z-index:60;padding:20px}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lg);width:100%;max-width:760px;max-height:88vh;overflow:auto}
+  .modal-head{display:flex;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:1}
+  .modal-head h3{font-size:17px}
+  .modal-body{padding:20px}
+  .modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 20px;border-top:1px solid var(--border);position:sticky;bottom:0;background:var(--surface)}
+  .x{margin-left:auto;width:32px;height:32px;border-radius:8px;background:var(--surface-2);display:grid;place-items:center;font-size:16px;color:var(--text-dim)}
+  .x:hover{background:var(--surface-3)}
+
+  .empty{text-align:center;color:var(--text-faint);padding:46px 20px}
+  .empty .big{font-size:30px;margin-bottom:8px;opacity:.5}
+
+  .bar-track{height:9px;border-radius:999px;background:var(--surface-3);overflow:hidden}
+  .bar-fill{height:100%;border-radius:999px}
+  .legend{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:6px}
+  .legend span{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--text-dim)}
+  .legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+
+  .stepper{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap}
+  .step{display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;font-size:12.5px;font-weight:600;color:var(--text-dim);background:var(--surface-2);border:1px solid var(--border)}
+  .step.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .step.done{color:var(--success);border-color:color-mix(in srgb,var(--success) 40%,var(--border))}
+  .step b{display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,.2);font-size:11px}
+
+  .switch{position:relative;width:40px;height:23px;border-radius:999px;background:var(--border-strong);transition:.15s;flex:none}
+  .switch.on{background:var(--success)}
+  .switch b{position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:#fff;transition:.15s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  .switch.on b{left:19px}
+
+  .qcard{border:1px solid var(--border);border-radius:10px;padding:14px;background:var(--surface-2);margin-bottom:10px}
+  .divider{height:1px;background:var(--border);margin:16px 0}
+  .kbd{font-family:var(--mono);font-size:12px;background:var(--surface-3);padding:1px 6px;border-radius:5px;border:1px solid var(--border)}
+  .scroll-y{max-height:300px;overflow:auto}
+  .grow{flex:1;min-width:0}
+  small.muted{color:var(--text-faint)}
+  .checkline{display:flex;align-items:center;gap:9px;padding:7px 4px;border-bottom:1px solid var(--grid)}
+  .checkline input{width:16px;height:16px}
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:16px;flex-wrap:wrap}
+  .tabs button{padding:9px 14px;border-radius:9px 9px 0 0;font-weight:600;font-size:13.5px;color:var(--text-dim);border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tabs button.on{color:var(--text);border-bottom-color:var(--accent);background:var(--surface-2)}
+  .weekpill{display:inline-flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--border-strong);border-radius:10px;padding:6px 10px;font-weight:600;font-size:13px}
+  .weekpill button{width:24px;height:24px;border-radius:6px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;color:var(--text-dim)}
+  .weekpill button:hover{background:var(--surface-3)}
+  .act-card{border:1px solid var(--border);border-left:3px solid var(--navy-2);border-radius:10px;padding:12px 14px;background:var(--surface);margin-bottom:10px}
+  .act-card.susp-Total{border-left-color:var(--danger)} .act-card.susp-Parcial{border-left-color:var(--warn)} .act-card.susp-No{border-left-color:var(--success)}
+  .fieldrow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:640px){.fieldrow{grid-template-columns:1fr}}
+  .searchbar{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border-strong);border-radius:10px;padding:4px 4px 4px 12px}
+  .searchbar input{border:none;background:none;outline:none;flex:1;color:var(--text);padding:8px 0}
+  .badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
+  .badge-in{background:var(--violet-bg);color:var(--violet)} .badge-out{background:var(--info-bg);color:var(--info)}
+  .toggle-list{display:flex;flex-direction:column}
+  .toggle-list .row-item{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--grid)}
+  .mini{font-size:11.5px;color:var(--text-faint)}
+  .banner{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:500}
+  .banner-warn{background:var(--warn-bg);color:var(--warn)}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
+<script type="text/babel">
+const {useState,useEffect,useMemo,useRef} = React;
+
+/* ============================ SUPABASE (conexión real) ============================
+   Project URL y Publishable key: son seguras de tener aquí, a la vista, en el
+   navegador — a diferencia de la Secret key, están diseñadas para esto. */
+const SUPABASE_URL = "https://lrjkphiprqbfvhdqjijh.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_M_hi0lCBn84bw1YxViVWmg_6pQQ-rmT";
+const EDGE_FUNCTION_CREAR_USUARIO = `${SUPABASE_URL}/functions/v1/crear-usuario`;
+const supabase = (typeof window!=="undefined" && window.supabase)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+/* traduce errores comunes de Supabase Auth a mensajes claros en español */
+function mapAuthError(error){
+  const m=(error&&error.message)||"";
+  if(/Invalid login credentials/i.test(m)) return "Correo o contraseña incorrectos.";
+  if(/Email not confirmed/i.test(m)) return "Debes confirmar tu correo antes de iniciar sesión.";
+  if(/already registered|already exists|User already registered/i.test(m)) return "Ya existe un usuario con ese correo.";
+  if(/Password should be|weak_password|password/i.test(m)) return "La contraseña no cumple los requisitos mínimos del sistema.";
+  if(/rate limit/i.test(m)) return "Demasiados intentos. Espera un momento y vuelve a intentar.";
+  return m || "Ocurrió un error inesperado. Intenta de nuevo.";
+}
+
+/* ---- traducción entre el perfil de la base (snake_case) y el objeto de usuario que usa la app (camelCase) ---- */
+function dbProfileToUser(p){
+  return {
+    id:p.id, nombre:p.nombre, email:p.email||"", rol:p.rol, estado:p.estado,
+    skill:p.skill||undefined, turno:p.turno||undefined, disponible:p.disponible,
+    habilitadoFueraTurno:p.habilitado_fuera_turno, habilitadoLlamadas:p.habilitado_llamadas,
+    opStatus:p.op_status||"Activo",
+    statusSince:p.status_since?new Date(p.status_since).getTime():null,
+    loginSince:p.login_since?new Date(p.login_since).getTime():null,
+    debeCambiarPassword:!!p.debe_cambiar_password,
+  };
+}
+async function fetchProfiles(){
+  const {data,error}=await supabase.from("profiles").select("*").order("nombre");
+  if(error){ console.error("Error leyendo perfiles:",error.message); return []; }
+  return data.map(dbProfileToUser);
+}
+/* aplica un patch (camelCase, como usa la app) como UPDATE real sobre profiles */
+async function updateProfile(id,patch){
+  const map={skill:"skill",turno:"turno",disponible:"disponible",habilitadoFueraTurno:"habilitado_fuera_turno",
+    habilitadoLlamadas:"habilitado_llamadas",opStatus:"op_status",statusSince:"status_since",loginSince:"login_since",
+    estado:"estado",rol:"rol",debeCambiarPassword:"debe_cambiar_password"};
+  const dbPatch={};
+  Object.keys(patch).forEach(k=>{
+    if(!map[k]) return;
+    let v=patch[k];
+    if((k==="statusSince"||k==="loginSince") && typeof v==="number") v=new Date(v).toISOString();
+    dbPatch[map[k]]=v;
+  });
+  if(Object.keys(dbPatch).length===0) return;
+  const {error}=await supabase.from("profiles").update(dbPatch).eq("id",id);
+  if(error) console.error("Error actualizando perfil:",error.message);
+}
+/* ---- tiempos diarios (login/auxiliares) ---- */
+const DB_FIELD={loginSec:"login_seg",banoSec:"bano_seg",breakSec:"break_seg",comidaSec:"comida_seg",
+  capacitacionSec:"capacitacion_seg",personalSec:"personal_seg",retroalimentacionSec:"retroalimentacion_seg"};
+async function bumpTiempoDiario(agentId,fecha,field,deltaSec){
+  if(!deltaSec||deltaSec<=0) return;
+  const col=DB_FIELD[field]; if(!col) return;
+  const {data}=await supabase.from("tiempos_diarios").select("id,"+col).eq("agente_id",agentId).eq("fecha",fecha).maybeSingle();
+  if(data){
+    await supabase.from("tiempos_diarios").update({[col]:(Number(data[col])||0)+deltaSec}).eq("id",data.id);
+  } else {
+    await supabase.from("tiempos_diarios").insert({agente_id:agentId,fecha,[col]:deltaSec});
+  }
+}
+async function registrarPrimerLoginDB(agentId,fecha,ms){
+  const {data}=await supabase.from("tiempos_diarios").select("id,primer_login").eq("agente_id",agentId).eq("fecha",fecha).maybeSingle();
+  if(!data) await supabase.from("tiempos_diarios").insert({agente_id:agentId,fecha,primer_login:new Date(ms).toISOString()});
+  else if(!data.primer_login) await supabase.from("tiempos_diarios").update({primer_login:new Date(ms).toISOString()}).eq("id",data.id);
+}
+async function registrarUltimoLogoutDB(agentId,fecha,ms){
+  const {data}=await supabase.from("tiempos_diarios").select("id").eq("agente_id",agentId).eq("fecha",fecha).maybeSingle();
+  if(!data) await supabase.from("tiempos_diarios").insert({agente_id:agentId,fecha,ultimo_logout:new Date(ms).toISOString()});
+  else await supabase.from("tiempos_diarios").update({ultimo_logout:new Date(ms).toISOString()}).eq("id",data.id);
+}
+async function fetchTiemposDiarios(){
+  const {data,error}=await supabase.from("tiempos_diarios").select("*");
+  if(error){ console.error("Error leyendo tiempos_diarios:",error.message); return []; }
+  return data.map(r=>({
+    agentId:r.agente_id, date:r.fecha,
+    loginSec:Number(r.login_seg)||0, banoSec:Number(r.bano_seg)||0, breakSec:Number(r.break_seg)||0,
+    comidaSec:Number(r.comida_seg)||0, capacitacionSec:Number(r.capacitacion_seg)||0,
+    personalSec:Number(r.personal_seg)||0, retroalimentacionSec:Number(r.retroalimentacion_seg)||0,
+    primerLoginMs:r.primer_login?new Date(r.primer_login).getTime():null,
+    ultimoLogoutMs:r.ultimo_logout?new Date(r.ultimo_logout).getTime():null,
+  }));
+}
+/* ---- centros escolares (ya sincronizados desde Google Sheets) ---- */
+async function fetchCentrosEscolares(){
+  const {data,error}=await supabase.from("centros_escolares").select("*").order("nombre");
+  if(error){ console.error("Error leyendo centros_escolares:",error.message); return []; }
+  return data.map(c=>({
+    codigo:c.codigo, nombre:c.nombre, departamento:c.departamento||"", municipio:c.municipio||"",
+    distrito:c.distrito||"", telefonos:c.telefonos&&c.telefonos.length?c.telefonos:[""],
+    programa:c.programa, modernizacion:!!c.modernizacion, fase:c.fase, control:!!c.control,
+  }));
+}
+
+/* ---- reglas de contraseña (se usan en primer ingreso, cambio voluntario y recuperación) ----
+   Nota: esta misma validación aplica del lado del cliente aquí, y también se puede exigir del
+   lado de Supabase (Authentication → Policies → Password Requirements) cuando se conecte la app
+   a la base real — ver README de la base de datos. */
+const PASSWORD_RULES=[
+  {k:"len",   label:"Al menos 8 caracteres",        test:s=>s.length>=8},
+  {k:"upper", label:"Al menos 1 letra mayúscula",   test:s=>/[A-ZÁÉÍÓÚÑ]/.test(s)},
+  {k:"lower", label:"Al menos 1 letra minúscula",   test:s=>/[a-záéíóúñ]/.test(s)},
+  {k:"digit", label:"Al menos 1 número",            test:s=>/[0-9]/.test(s)},
+  {k:"special",label:"Al menos 1 carácter especial",test:s=>/[^A-Za-z0-9ÁÉÍÓÚÑáéíóúñ]/.test(s)},
+];
+const passwordValida=pw=>PASSWORD_RULES.every(r=>r.test(pw||""));
+function PasswordChecklist({value}){
+  return (<div style={{display:"flex",flexDirection:"column",gap:4,margin:"8px 0"}}>
+    {PASSWORD_RULES.map(r=>{const ok=r.test(value||"");return (
+      <div key={r.k} style={{fontSize:12.5,color:ok?"var(--success)":"var(--text-faint)",display:"flex",alignItems:"center",gap:6}}>
+        <span>{ok?"✓":"○"}</span>{r.label}
+      </div>);})}
+  </div>);
+}
+
+/* ============================ DATOS DE EJEMPLO ============================
+   En producción vendrían de Google Sheets / un backend. NO se pre-establece
+   ninguna campaña: se crean desde el módulo de Campañas.                    */
+
+const DEPTOS = ["San Salvador","La Libertad","Santa Ana","San Miguel","Sonsonate","Usulután","La Paz","Cuscatlán","Chalatenango","Morazán"];
+
+function seedSchools(){
+  const data=[
+    ["12345","Centro Escolar República de México","San Salvador","San Salvador","San Salvador Centro","Despega",true,2,false],
+    ["12346","Complejo Educativo Walter Thilo Deininger","La Libertad","Santa Tecla","La Libertad Este",null,true,1,false],
+    ["12347","Centro Escolar Cantón El Espino","San Salvador","Soyapango","Soyapango",null,false,null,true],
+    ["12348","Instituto Nacional General Francisco Menéndez","Santa Ana","Santa Ana","Santa Ana Centro","Despega",true,3,false],
+    ["12349","Centro Escolar Caserío Las Flores","Sonsonate","Izalco","Izalco",null,false,null,false],
+    ["12350","Complejo Educativo Católico Juan XXIII","San Miguel","San Miguel","San Miguel Centro","Despega",true,2,true],
+    ["12351","Centro Escolar Cantón San Antonio","Usulután","Jiquilisco","Jiquilisco",null,false,null,false],
+    ["12352","Centro Escolar Profesora María Luisa Parada","La Paz","Zacatecoluca","Zacatecoluca",null,true,1,false],
+    ["12353","Instituto Nacional de Cojutepeque","Cuscatlán","Cojutepeque","Cojutepeque","Despega",false,null,false],
+    ["12354","Centro Escolar Cantón Las Pilas","Chalatenango","La Palma","La Palma",null,false,null,true],
+    ["12355","Centro Escolar Caserío El Tránsito","Morazán","San Francisco Gotera","Gotera",null,true,2,false],
+    ["12356","Complejo Educativo San Luis","La Libertad","Antiguo Cuscatlán","La Libertad Centro","Despega",true,3,false],
+    ["12357","Centro Escolar República del Perú","San Salvador","Mejicanos","Mejicanos",null,false,null,false],
+    ["12358","Centro Escolar Cantón El Carmen","Santa Ana","Chalchuapa","Chalchuapa",null,true,1,true],
+    ["12359","Centro Escolar Caserío Los Naranjos","Sonsonate","Nahuizalco","Nahuizalco","Despega",false,null,false],
+    ["12360","Instituto Nacional de Usulután","Usulután","Usulután","Usulután Centro",null,true,2,false],
+  ];
+  return data.map((r,i)=>({
+    codigo:r[0],nombre:r[1],departamento:r[2],municipio:r[3],distrito:r[4],
+    programa:r[5],modernizacion:r[6],fase:r[7],control:r[8],
+    telefonos:[`2${(2200000+i*1313)}`.slice(0,8), `7${(8100000+i*2027)}`.slice(0,8)],
+  }));
+}
+
+let UID=1; const uid=p=>`${p}_${UID++}`;
+const shiftNow=()=> new Date().getHours()<12 ? "AM":"PM";
+const CURRENT_SHIFT=shiftNow();
+
+function seedUsers(){
+  const A=(o)=>({skill:"Outbound",disponible:true,habilitadoFueraTurno:false,habilitadoLlamadas:true,opStatus:"Activo",statusSince:null,loginSince:null,debeCambiarPassword:false,...o});
+  return [
+    {id:uid("u"),nombre:"Carlos Carvajal",email:"carlos.carvajal@goes.gob.sv",pass:"123456",rol:"Administrador",estado:"activo",debeCambiarPassword:false},
+    {id:uid("u"),nombre:"Ana López",email:"ana.lopez@goes.gob.sv",pass:"123456",rol:"Supervisor",estado:"activo",debeCambiarPassword:false},
+    {id:uid("u"),nombre:"José Martínez",email:"jose.martinez@goes.gob.sv",pass:"123456",rol:"Team leader",estado:"activo",debeCambiarPassword:false},
+    A({id:uid("u"),nombre:"María Reyes",email:"maria.reyes@goes.gob.sv",pass:"123456",rol:"Agente",estado:"activo",turno:CURRENT_SHIFT}),
+    A({id:uid("u"),nombre:"Luis Hernández",email:"luis.hernandez@goes.gob.sv",pass:"123456",rol:"Agente",estado:"activo",turno:CURRENT_SHIFT}),
+    A({id:uid("u"),nombre:"Sofía Ramírez",email:"sofia.ramirez@goes.gob.sv",pass:"123456",rol:"Agente",estado:"activo",turno:CURRENT_SHIFT==="AM"?"PM":"AM",skill:"Inbound",opStatus:"Break",statusSince:Date.now()-187000}),
+    A({id:uid("u"),nombre:"Diego Cruz",email:"diego.cruz@goes.gob.sv",pass:"123456",rol:"Agente",estado:"activo",turno:CURRENT_SHIFT}),
+    A({id:uid("u"),nombre:"Karla Mejía",email:"karla.mejia@goes.gob.sv",pass:"123456",rol:"Agente",estado:"activo",turno:CURRENT_SHIFT==="AM"?"PM":"AM",disponible:false}),
+    {id:uid("u"),nombre:"Pedro Gómez",email:"pedro.gomez@goes.gob.sv",pass:"123456",rol:"Agente",estado:"pendiente",debeCambiarPassword:true},
+  ];
+}
+
+const ROLES=["Administrador","Team leader","Supervisor","Agente"];
+const OP_STATUSES=[
+  {k:"Activo",pill:"p-success"},{k:"Baño",pill:"p-info"},{k:"Break",pill:"p-warn"},{k:"Comida",pill:"p-violet"},
+  {k:"Capacitación",pill:"p-accent"},{k:"Personal",pill:"p-neutral"},{k:"Retroalimentación",pill:"p-teal"},
+];
+/* auxiliares que consumen tiempo (todo excepto Activo) y sus límites por defecto en minutos */
+const AUXILIARES=["Baño","Break","Comida","Capacitación","Personal","Retroalimentación"];
+const LIMITES_DEFAULT={Baño:10,Break:15,Comida:60,Capacitación:120,Personal:15,Retroalimentación:30}; // minutos
+/* estados de la llamada (según documento) */
+const CALL_STATES=[
+  {k:"Pendiente",pill:"p-neutral"},
+  {k:"Contactado",pill:"p-success"},
+  {k:"No contestó",pill:"p-danger"},
+  {k:"Número equivocado",pill:"p-neutral"},
+  {k:"Llamar nuevamente",pill:"p-warn"},
+  {k:"Cerrado por no contacto",pill:"p-neutral"},
+];
+const statePill=k=>(CALL_STATES.find(c=>c.k===k)||{pill:"p-neutral"}).pill;
+const opPill=k=>(OP_STATUSES.find(o=>o.k===k)||{pill:"p-neutral"}).pill;
+const DEFAULT_MAX_INTENTOS=3;
+
+/* tipos de respuesta para las preguntas de campaña (totalmente parametrizables) */
+const Q_TIPOS=[
+  {k:"sino",t:"Sí / No"},
+  {k:"multiple",t:"Selección múltiple"},
+  {k:"lista",t:"Lista desplegable"},
+  {k:"abierta",t:"Abierta"},
+  {k:"fecha",t:"Fecha"},
+  {k:"hora",t:"Hora"},
+  {k:"combinacion",t:"Combinación de tipos"},
+];
+const Q_TIPOS_SIMPLES=Q_TIPOS.filter(t=>t.k!=="combinacion"); // para sub-partes
+const qTipoLabel=k=>(Q_TIPOS.find(t=>t.k===k)||{t:k}).t;
+// solo estas pueden condicionar otras preguntas (tienen opciones discretas de valor único)
+const esCondicionable=q=>q&&(q.tipo==="sino"||q.tipo==="multiple"||q.tipo==="lista");
+/* una opción puede ser un string simple o {texto, valorReporte} para normalizar el dato al reportar/exportar */
+const optTexto=o=>typeof o==="string"?o:(o&&o.texto)||"";
+const optReporte=o=>{ if(typeof o==="string") return o; const v=o&&o.valorReporte&&o.valorReporte.trim(); return v?v:optTexto(o); };
+const opcionesDe=q=> q.tipo==="sino"?["Sí","No"]:(q.opciones||[]).map(optTexto).filter(Boolean);
+function reportMap(q){ const m={}; (q.opciones||[]).forEach(o=>{const t=optTexto(o); if(t) m[t]=optReporte(o);}); return m; }
+/* ¿la pregunta condicional se cumple? soporta "es igual a" y "es diferente de" */
+function pasaCondicion(cond,ans){
+  if(!cond||!cond.q) return true;
+  const a=ans[cond.q];
+  const match=Array.isArray(a)?a.includes(cond.op):a===cond.op;
+  return cond.mode==="neq" ? !match : match;
+}
+/* ¿la respuesta actual a esta pregunta marca "finalizar formulario" (oculta las preguntas siguientes)? */
+function terminaFormulario(q,ans){
+  const raw=ans[q.id];
+  if(q.tipo==="combinacion"){
+    if(!raw) return false;
+    return (q.partes||[]).some(p=>terminaParte(p,raw[p.id]));
+  }
+  if(raw==null||raw==="") return false;
+  if(q.tipo==="sino") return !!(q.opcionesFinaliza && q.opcionesFinaliza[raw]);
+  const arr=Array.isArray(raw)?raw:[raw];
+  const opts=(q.opciones||[]).map(o=>typeof o==="string"?{texto:o,finaliza:false}:o);
+  return arr.some(v=>opts.some(o=>o.texto===v && o.finaliza));
+}
+/* ¿la respuesta actual de una sub-pregunta (parte) marca "finalizar formulario"? */
+function terminaParte(parte,value){
+  if(value==null||value==="") return false;
+  if(parte.tipo==="sino") return !!(parte.opcionesFinaliza && parte.opcionesFinaliza[value]);
+  const arr=Array.isArray(value)?value:[value];
+  const opts=(parte.opciones||[]).map(o=>typeof o==="string"?{texto:o,finaliza:false}:o);
+  return arr.some(v=>opts.some(o=>o.texto===v && o.finaliza));
+}
+/* ¿la condición de una sub-pregunta (referencia a otra parte del mismo "combinación") se cumple? */
+function pasaCondicionParte(cond,subAns){
+  if(!cond||!cond.p) return true;
+  const a=subAns[cond.p];
+  const match=Array.isArray(a)?a.includes(cond.op):a===cond.op;
+  return cond.mode==="neq" ? !match : match;
+}
+/* valores de una actividad (respuestas) para una pregunta, ya normalizados por valorReporte. partId = id de la sub-pregunta (parte), o null para preguntas simples */
+function valoresActividad(act,q,partId){
+  const qDef = partId!=null ? (q.partes||[]).find(p=>p.id===partId) : q;
+  let raw = partId!=null ? (act&&act[q.id]||{})[partId] : act&&act[q.id];
+  if(raw==null||raw==="") return [];
+  const map=qDef?reportMap(qDef):{};
+  const arr=Array.isArray(raw)?raw.filter(x=>x!=null&&x!==""):[raw];
+  return arr.map(v=>map[v]!=null?map[v]:v);
+}
+/* cuenta respuestas de una pregunta a través de varias actividades -> [{label,value,color}] */
+function contarActividades(acts,q,partId){
+  const counts={};
+  acts.forEach(act=>valoresActividad(act,q,partId).forEach(v=>{counts[v]=(counts[v]||0)+1;}));
+  return Object.entries(counts).map(([label,value],i)=>({label,value,color:PALETTE[i%PALETTE.length]}));
+}
+/* etiqueta legible del valor de una respuesta (para tarjetas de actividad) */
+function labelDeValor(v){ return Array.isArray(v)?v.join(", "):(v==null||v===""?"—":String(v)); }
+/* próximo id disponible con un prefijo dado (para preguntas y sub-preguntas), evita colisiones al duplicar */
+function nextId(items,prefix){ let n=1; while((items||[]).some(it=>it.id===prefix+n)) n++; return prefix+n; }
+const blankOpcion=()=>({texto:"",valorReporte:"",finaliza:false});
+const blankParte=partes=>({id:nextId(partes||[],"p"),label:"",tipo:"multiple",opciones:[blankOpcion(),blankOpcion()],cond:null,opcionesFinaliza:{}});
+const blankPregunta=preguntas=>({id:nextId(preguntas||[],"q"),texto:"",tipo:"multiple",opciones:[blankOpcion(),blankOpcion()],partes:[],cond:null,opcionesFinaliza:{}});
+const limpiaOpciones=ops=>(ops||[]).filter(o=>o&&o.texto&&o.texto.trim()).map(o=>({texto:o.texto.trim(),valorReporte:(o.valorReporte||"").trim(),finaliza:!!o.finaliza}));
+const limpiaParte=p=>{
+  const base={id:p.id,label:p.label,tipo:p.tipo,cond:p.cond&&p.cond.p?p.cond:null};
+  if(p.tipo==="multiple"||p.tipo==="lista") return {...base,opciones:limpiaOpciones(p.opciones)};
+  if(p.tipo==="sino") return {...base,opciones:["Sí","No"],opcionesFinaliza:{Sí:!!(p.opcionesFinaliza&&p.opcionesFinaliza["Sí"]),No:!!(p.opcionesFinaliza&&p.opcionesFinaliza["No"])}};
+  return {...base,opciones:[]};
+};
+const limpiaPregunta=q=>{
+  const base={id:q.id,texto:q.texto,tipo:q.tipo,cond:q.cond&&q.cond.q?q.cond:null};
+  if(q.tipo==="multiple"||q.tipo==="lista") return {...base,opciones:limpiaOpciones(q.opciones)};
+  if(q.tipo==="sino") return {...base,opciones:["Sí","No"],opcionesFinaliza:{Sí:!!(q.opcionesFinaliza&&q.opcionesFinaliza["Sí"]),No:!!(q.opcionesFinaliza&&q.opcionesFinaliza["No"])}};
+  if(q.tipo==="combinacion") return {...base,opciones:[],partes:(q.partes||[]).filter(p=>p.label||p.tipo).map(limpiaParte)};
+  return {...base,opciones:[]};
+};
+/* al reordenar/eliminar preguntas o sub-preguntas, cualquier condición que apunte a algo que ya no está
+   ANTES de su posición queda inválida y se limpia automáticamente */
+function sanitizeConditions(preguntas){
+  return preguntas.map((q,i)=>{
+    const idsPrevias=preguntas.slice(0,i).map(p=>p.id);
+    const cond = q.cond && idsPrevias.includes(q.cond.q) ? q.cond : null;
+    if(q.tipo!=="combinacion") return {...q,cond};
+    const partes=(q.partes||[]).map((p,pi)=>{
+      const idsPreviasParte=(q.partes||[]).slice(0,pi).map(sp=>sp.id);
+      const pcond = p.cond && idsPreviasParte.includes(p.cond.p) ? p.cond : null;
+      return {...p,cond:pcond};
+    });
+    return {...q,cond,partes};
+  });
+}
+
+/* permisos por rol */
+const CAN={
+  Administrador:{bandeja:1,gestionar:1,campanas:1,crear:1,asignar:1,reasignar:1,duplicar:1,consulta:1,editar:1,eliminar:1,editarTodo:1,equipo:1,dashboard:1,admin:1,pausar:1,exportar:1,gestionarCerrados:1,crearUsuario:1,limites:1,auxiliares:1},
+  "Team leader":{bandeja:1,gestionar:1,campanas:1,crear:1,asignar:1,reasignar:1,duplicar:1,consulta:1,editar:1,eliminar:1,editarTodo:1,equipo:1,dashboard:1,admin:0,pausar:1,exportar:0,gestionarCerrados:0,crearUsuario:0,limites:0,auxiliares:1},
+  Supervisor:{bandeja:0,gestionar:0,campanas:1,crear:1,asignar:1,reasignar:1,duplicar:1,consulta:1,editar:1,eliminar:1,editarTodo:1,equipo:1,dashboard:1,admin:0,pausar:1,exportar:1,gestionarCerrados:1,crearUsuario:0,limites:0,auxiliares:1},
+  Agente:{bandeja:1,gestionar:1,campanas:0,crear:0,asignar:0,reasignar:0,duplicar:0,consulta:1,editar:1,eliminar:0,editarTodo:0,equipo:0,dashboard:0,admin:0,pausar:0,exportar:0,gestionarCerrados:0,crearUsuario:0,limites:0,auxiliares:0},
+};
+
+/* ============================ UTILIDADES ============================ */
+const PALETTE=["#13294b","#f2a900","#0f9d58","#d9342b","#2563eb","#7c3aed","#e08a00","#64748b"];
+function Pill({kind,children}){return <span className={"pill "+kind}><i style={{background:"currentColor"}}/>{children}</span>;}
+function fmt(s){const m=Math.floor(s/60),x=s%60;return `${String(m).padStart(2,"0")}:${String(x).padStart(2,"0")}`;}
+function fmtLong(s){s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),x=s%60;return (h>0?String(h).padStart(2,"0")+":":"")+String(m).padStart(2,"0")+":"+String(x).padStart(2,"0");}
+/* nivel de alerta de un tiempo en curso frente a su límite: null | "warn" (80%+) | "danger" (100%+) */
+function nivelTiempo(elapsed,limite){
+  if(!limite) return null;
+  if(elapsed>=limite) return "danger";
+  if(elapsed>=limite*0.8) return "warn";
+  return null;
+}
+const estiloNivel=nivel=>nivel==="danger"?{color:"var(--danger)",fontWeight:700}:nivel==="warn"?{color:"var(--warn)",fontWeight:700}:null;
+/* hora de reloj (HH:MM) a partir de un timestamp epoch ms, o "—" si no hay valor */
+function fmtHora(ms){ if(!ms) return "—"; const d=new Date(ms); return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
+function useNow(active=true){const [n,setN]=useState(Date.now());useEffect(()=>{if(!active)return;setN(Date.now());const id=setInterval(()=>setN(Date.now()),1000);return ()=>clearInterval(id);},[active]);return n;}
+
+/* ---- registro diario de tiempos (login + pausas), por agente y fecha ---- */
+function dayKey(d=new Date()){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
+function addDays(dateStr,n){const [y,m,d]=dateStr.split("-").map(Number);const dt=new Date(y,m-1,d+n);return dayKey(dt);}
+function datesBetween(from,to){const out=[];let cur=from;let guard=0;while(cur<=to&&guard<400){out.push(cur);cur=addDays(cur,1);guard++;}return out;}
+const STATUS_FIELD={Baño:"banoSec",Break:"breakSec",Comida:"comidaSec",Capacitación:"capacitacionSec",Personal:"personalSec",Retroalimentación:"retroalimentacionSec"};
+const FIELD_LABEL={loginSec:"Login",banoSec:"Baño",breakSec:"Break",comidaSec:"Comida",capacitacionSec:"Capacitación",personalSec:"Personal",retroalimentacionSec:"Retroalimentación"};
+const DAILY_FIELDS=["loginSec","banoSec","breakSec","comidaSec","capacitacionSec","personalSec","retroalimentacionSec"];
+const blankDailyEntry=(agentId,date)=>{const e={agentId,date,primerLoginMs:null,ultimoLogoutMs:null};DAILY_FIELDS.forEach(f=>e[f]=0);return e;};
+function getDailyEntry(dailyLog,agentId,date){return dailyLog.find(e=>e.agentId===agentId&&e.date===date)||blankDailyEntry(agentId,date);}
+function bumpDailyLog(setDailyLog,agentId,date,field,deltaSec){
+  if(!deltaSec||deltaSec<=0) return;
+  setDailyLog(prev=>{
+    const idx=prev.findIndex(e=>e.agentId===agentId&&e.date===date);
+    if(idx<0) return [...prev,{...blankDailyEntry(agentId,date),[field]:deltaSec}];
+    return prev.map((e,i)=>i===idx?{...e,[field]:(e[field]||0)+deltaSec}:e);
+  });
+}
+/* registra el PRIMER login del día (no se sobreescribe si ya existe uno para hoy) */
+function registrarPrimerLogin(setDailyLog,userId,date,ms){
+  setDailyLog(prev=>{
+    const idx=prev.findIndex(e=>e.agentId===userId&&e.date===date);
+    if(idx<0) return [...prev,{...blankDailyEntry(userId,date),primerLoginMs:ms}];
+    if(prev[idx].primerLoginMs) return prev;
+    return prev.map((e,i)=>i===idx?{...e,primerLoginMs:ms}:e);
+  });
+}
+/* registra el ÚLTIMO logout del día (se sobreescribe cada vez, siempre queda el más reciente) */
+function registrarUltimoLogout(setDailyLog,userId,date,ms){
+  setDailyLog(prev=>{
+    const idx=prev.findIndex(e=>e.agentId===userId&&e.date===date);
+    if(idx<0) return [...prev,{...blankDailyEntry(userId,date),ultimoLogoutMs:ms}];
+    return prev.map((e,i)=>i===idx?{...e,ultimoLogoutMs:ms}:e);
+  });
+}
+/* total de un campo para un agente en una fecha, sumando el tramo en curso si aplica (solo si la fecha es hoy) */
+function liveTotal(dailyLog,u,field,now){
+  const today=dayKey();
+  const stored=getDailyEntry(dailyLog,u.id,today)[field]||0;
+  let live=0;
+  if(field==="loginSec" && u.loginSince) live=Math.max(0,(now-u.loginSince)/1000);
+  else if(STATUS_FIELD[u.opStatus]===field && u.statusSince) live=Math.max(0,(now-u.statusSince)/1000);
+  return stored+live;
+}
+function seedDailyLog(agentIds){
+  const rows=[];
+  const base=[[7.5,15,25,40,0,5,10],[7.1,10,20,35,60,0,15],[6.8,20,30,50,0,10,0]]; // horas login, min baño, break, comida, capacitación, personal, retro (aprox)
+  agentIds.forEach((id,ai)=>{
+    for(let d=1;d<=3;d++){
+      const date=addDays(dayKey(),-d);
+      const [h,bn,br,co,ca,pe,re]=base[(ai+d)%base.length];
+      rows.push({agentId:id,date,loginSec:Math.round(h*3600),banoSec:bn*60,breakSec:br*60,comidaSec:co*60,capacitacionSec:ca*60,personalSec:pe*60,retroalimentacionSec:re*60});
+    }
+  });
+  return rows;
+}
+
+/* ---- filtro de fecha (día único o período) que reemplaza el filtro por semana ISO ---- */
+function fmtDateHuman(dateStr){ if(!dateStr) return ""; const [y,m,d]=dateStr.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("es-SV",{day:"numeric",month:"short",year:"numeric"}); }
+function rangeLabel(desde,hasta){ if(!desde) return ""; return desde===hasta ? fmtDateHuman(desde) : `${fmtDateHuman(desde)} – ${fmtDateHuman(hasta)}`; }
+function overlaps(aDesde,aHasta,bDesde,bHasta){ return aDesde<=bHasta && aHasta>=bDesde; }
+function defaultFiltro(){
+  const t=dayKey();
+  const dow=(new Date().getDay()+6)%7; // 0=lunes..6=domingo
+  const mondayThis=addDays(t,-dow);
+  const mondayNext=addDays(mondayThis,7);
+  const sundayNext=addDays(mondayNext,6);
+  return {desde:mondayNext,hasta:sundayNext};
+}
+
+/* asignación equitativa */
+function buildAssign(codes,agentIds){const m={};if(!agentIds.length)return m;codes.forEach((c,i)=>{m[c]=agentIds[i%agentIds.length];});return m;}
+function getAssign(camp){return camp.assign||buildAssign(camp.schoolCodes,camp.agentIds);}
+/* campañas En curso (no finalizadas) donde el agente ya participa, excluyendo una campaña dada */
+function otrasCampanasActivas(agentId,campaigns,excludeCampId){
+  return campaigns.filter(c=>c.id!==excludeCampId && c.estado==="En curso" && c.agentIds.includes(agentId));
+}
+
+/* ¿puede el agente iniciar/atender llamadas? */
+function puedeLlamar(u,pausa,camp){
+  if(u.rol==="Agente"){
+    if(u.disponible===false) return {ok:false,motivo:"Estás marcado como no disponible. Un supervisor debe habilitarte."};
+    if(u.habilitadoLlamadas===false) return {ok:false,motivo:"Un supervisor deshabilitó tus llamadas."};
+    if(u.turno && u.turno!==shiftNow() && !u.habilitadoFueraTurno) return {ok:false,motivo:`Estás fuera de tu turno (${u.turno}). Pide habilitación para trabajar fuera de turno.`};
+  }
+  if((u.opStatus||"Activo")!=="Activo") return {ok:false,motivo:`Estás en ${u.opStatus}. Vuelve a Activo para llamar.`};
+  if(pausa) return {ok:false,motivo:"Un responsable pausó las nuevas llamadas en todas las campañas. Puedes terminar la que tengas en curso."};
+  if(camp&&camp.pausada) return {ok:false,motivo:`Un responsable pausó las nuevas llamadas de «${camp.titulo}». Puedes terminar la que tengas en curso.`};
+  return {ok:true};
+}
+
+/* lectura de archivo CSV/Excel de centros */
+const _norm=s=>String(s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]/g,"");
+function rowToSchool(row){
+  const m={};Object.keys(row).forEach(k=>{m[_norm(k)]=row[k];});
+  const get=(...res)=>{for(const k of Object.keys(m)){if(res.some(rx=>rx.test(k)))return m[k];}return "";};
+  const truthy=v=>/^(si|s[ií]|true|verdadero|1|x|yes)$/i.test(String(v).trim());
+  const tels=[];Object.keys(m).forEach(k=>{if(/(telefono|tel\d|fono|movil|celular|contacto)/.test(k)){String(m[k]).split(/[\/,;|]+/).forEach(t=>{t=String(t).trim();if(t)tels.push(t);});}});
+  const fase=String(get(/fase/)||"").trim();
+  return {codigo:String(get(/^codigo/,/codigo/,/^code/)||"").trim(),nombre:String(get(/nombre/,/^centroeducativo/,/^centroescolar/,/^centro/,/escuela/)||"").trim(),
+    departamento:String(get(/departamento/,/depto/)||"").trim(),municipio:String(get(/municipio/)||"").trim(),distrito:String(get(/distrito/)||"").trim(),
+    telefonos:tels.length?tels:[""],programa:(String(get(/programa/)||"").trim())||null,modernizacion:truthy(get(/moderniz/)),fase:fase||null,control:truthy(get(/control/))};
+}
+function parseSchoolFile(file,cb){
+  if(typeof XLSX==="undefined")return cb(new Error("No se cargó el lector de archivos."));
+  const r=new FileReader();
+  r.onload=e=>{try{const wb=XLSX.read(new Uint8Array(e.target.result),{type:"array"});const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{defval:""});const mapped=rows.map(rowToSchool);const validos=mapped.filter(s=>s.codigo&&s.nombre);cb(null,{validos,total:rows.length,omitidos:mapped.length-validos.length,hoja:wb.SheetNames[0]});}catch(err){cb(err);}};
+  r.onerror=()=>cb(new Error("No se pudo leer el archivo."));
+  r.readAsArrayBuffer(file);
+}
+function downloadTemplate(){
+  const headers=["Código","Nombre del Centro Educativo","Departamento","Municipio","Distrito","Teléfono 1","Teléfono 2","Programa","Modernización","Fase","Centro Control"];
+  const ej=["12345","Centro Educativo Ejemplo","San Salvador","San Salvador","San Salvador Centro","22001122","78001122","Despega","Sí","2","No"];
+  const csv=[headers.join(","),ej.join(",")].join("\n");
+  const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="plantilla_centros_educativos.csv";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+}
+
+/* átomos UI */
+function Modal({title,onClose,children,foot,wide}){
+  return (<div className="modal-bg" onClick={onClose}>
+    <div className="modal" style={wide?{maxWidth:940}:null} onClick={e=>e.stopPropagation()}>
+      <div className="modal-head"><h3>{title}</h3><button className="x" onClick={onClose}>✕</button></div>
+      <div className="modal-body">{children}</div>
+      {foot&&<div className="modal-foot">{foot}</div>}
+    </div></div>);
+}
+function Bars({rows}){
+  const max=Math.max(1,...rows.map(r=>r.value));
+  return (<div style={{display:"flex",flexDirection:"column",gap:11}}>
+    {rows.map((r,i)=>(<div key={i}>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:5}}><span style={{color:"var(--text-dim)"}}>{r.label}</span><b className="mono">{r.value}</b></div>
+      <div className="bar-track"><div className="bar-fill" style={{width:(r.value/max*100)+"%",background:r.color||"var(--navy-2)"}}/></div>
+    </div>))}
+    {rows.length===0&&<div className="empty">Sin datos</div>}
+  </div>);
+}
+function Donut({segments,size=150}){
+  const total=segments.reduce((a,b)=>a+b.value,0)||1;const R=size/2,r=R*0.62;let acc=0;
+  const arcs=segments.map(s=>{const a0=acc/total*2*Math.PI,a1=(acc+s.value)/total*2*Math.PI;acc+=s.value;
+    const x0=R+R*Math.sin(a0),y0=R-R*Math.cos(a0),x1=R+R*Math.sin(a1),y1=R-R*Math.cos(a1);
+    const xi0=R+r*Math.sin(a0),yi0=R-r*Math.cos(a0),xi1=R+r*Math.sin(a1),yi1=R-r*Math.cos(a1);const large=(a1-a0)>Math.PI?1:0;
+    return {d:`M${x0},${y0} A${R},${R} 0 ${large} 1 ${x1},${y1} L${xi1},${yi1} A${r},${r} 0 ${large} 0 ${xi0},${yi0} Z`,color:s.color};});
+  return (<div style={{display:"flex",gap:18,alignItems:"center",flexWrap:"wrap"}}>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      {segments.length===0?<circle cx={R} cy={R} r={(R+r)/2} fill="none" stroke="var(--surface-3)" strokeWidth={R-r}/>:arcs.map((a,i)=><path key={i} d={a.d} fill={a.color}/>)}
+      <text x={R} y={R-2} textAnchor="middle" fontFamily="Space Grotesk" fontWeight="700" fontSize="22" fill="var(--text)">{total}</text>
+      <text x={R} y={R+14} textAnchor="middle" fontSize="10" fill="var(--text-faint)">total</text>
+    </svg>
+    <div className="legend" style={{flexDirection:"column",gap:8}}>{segments.map((s,i)=><span key={i}><i style={{background:s.color}}/>{s.label} · <b className="mono">{s.value}</b></span>)}</div>
+  </div>);
+}
+function Stat({k,v,meta,c}){return <div className="card card-pad"><div className="stat"><span className="k">{k}</span><span className="v" style={{color:c}}>{v}</span>{meta&&<span className="meta">{meta}</span>}</div></div>;}
+function Switch({on,onClick,disabled}){return <button className={"switch"+(on?" on":"")} disabled={disabled} onClick={onClick} style={disabled?{opacity:.5}:null}><b/></button>;}
+
+/* control de respuesta según el tipo (Sí/No, múltiple, lista, abierta, fecha, hora) */
+function AnswerField({tipo,opciones,value,onChange}){
+  if(tipo==="sino"){
+    return <div className="row" style={{gap:7}}>
+      {["Sí","No"].map(op=><button key={op} className={"chip-btn"+(value===op?" on":"")} onClick={()=>onChange(op)}>{op}</button>)}
+    </div>;
+  }
+  if(tipo==="multiple"){
+    const arr=Array.isArray(value)?value:[];
+    const opts=(opciones||[]).map(optTexto).filter(Boolean);
+    const toggle=op=>onChange(arr.includes(op)?arr.filter(x=>x!==op):[...arr,op]);
+    return <div className="row" style={{gap:7}}>
+      {opts.map(op=>(
+        <button key={op} className={"chip-btn"+(arr.includes(op)?" on":"")} onClick={()=>toggle(op)}>
+          <span style={{fontSize:11}}>{arr.includes(op)?"☑":"☐"}</span>{op}</button>))}
+    </div>;
+  }
+  if(tipo==="lista"){
+    const opts=(opciones||[]).map(optTexto).filter(Boolean);
+    return <select className="input" style={{width:"auto"}} value={value||""} onChange={e=>onChange(e.target.value)}>
+      <option value="">Selecciona una opción</option>
+      {opts.map(op=><option key={op} value={op}>{op}</option>)}
+    </select>;
+  }
+  if(tipo==="abierta") return <textarea className="input" rows={2} value={value||""} onChange={e=>onChange(e.target.value)} placeholder="Respuesta…"/>;
+  if(tipo==="fecha") return <input className="input" type="date" value={value||""} onChange={e=>onChange(e.target.value)}/>;
+  if(tipo==="hora") return <input className="input" type="time" value={value||""} onChange={e=>onChange(e.target.value)} style={{width:"auto"}}/>;
+  return null;
+}
+
+/* ---- editor de preguntas parametrizadas, reutilizado por CallPanel e InboundCE ---- */
+function PreguntasEditor({preguntas,ans,setAns}){
+  const cutIdx=preguntas.findIndex(q=>terminaFormulario(q,ans));
+  const enAlcance=cutIdx===-1?preguntas:preguntas.slice(0,cutIdx+1);
+  const visibles=enAlcance.filter(q=>pasaCondicion(q.cond,ans));
+  if(preguntas.length===0) return <div className="empty" style={{padding:14}}>Esta campaña no tiene preguntas configuradas.</div>;
+  return (<>{visibles.map(q=>{
+    const subAns=ans[q.id]||{};
+    const partes=q.partes||[];
+    const cutSubIdx=q.tipo==="combinacion"?partes.findIndex(p=>terminaParte(p,subAns[p.id])):-1;
+    const partesEnAlcance=cutSubIdx===-1?partes:partes.slice(0,cutSubIdx+1);
+    const partesVisibles=partesEnAlcance.filter(p=>pasaCondicionParte(p.cond,subAns));
+    return (
+    <div className="qcard" key={q.id}>
+      <div style={{fontWeight:600,marginBottom:8}}>{q.texto} <span className="tag">{qTipoLabel(q.tipo)}</span></div>
+      {q.tipo==="combinacion"
+        ? partesVisibles.map(p=>(
+            <div key={p.id} style={{marginBottom:10}}>
+              <small className="muted" style={{display:"block",marginBottom:5}}>{p.label||p.id} · {qTipoLabel(p.tipo)}</small>
+              <AnswerField tipo={p.tipo} opciones={p.opciones} value={subAns[p.id]}
+                onChange={v=>setAns(a=>({...a,[q.id]:{...(a[q.id]||{}),[p.id]:v}}))}/>
+              {p.cond&&p.cond.p && <small className="muted" style={{display:"block",marginTop:4}}>↳ se muestra porque «{p.cond.p}» {p.cond.mode==="neq"?"≠":"="} {p.cond.op}</small>}
+              {cutSubIdx!==-1 && p.id===partes[cutSubIdx].id && <small className="muted" style={{display:"block",marginTop:4,color:"var(--warn)"}}>⏹ Esta respuesta finaliza el formulario.</small>}
+            </div>))
+        : <AnswerField tipo={q.tipo} opciones={q.opciones} value={ans[q.id]}
+            onChange={v=>setAns(a=>({...a,[q.id]:v}))}/>}
+      {q.cond&&q.cond.q && <small className="muted" style={{display:"block",marginTop:6}}>↳ se muestra porque «{q.cond.q.toUpperCase()}» {q.cond.mode==="neq"?"≠":"="} {q.cond.op}</small>}
+      {cutIdx!==-1 && q.id===preguntas[cutIdx].id && q.tipo!=="combinacion" && <small className="muted" style={{display:"block",marginTop:6,color:"var(--warn)"}}>⏹ Esta respuesta finaliza el formulario: no se mostrarán más preguntas.</small>}
+    </div>
+    );
+  })}</>);
+}
+/* ---- resumen de solo lectura de una actividad ya registrada ---- */
+function ActividadResumen({preguntas,act}){
+  const conValor=preguntas.filter(q=>act[q.id]!=null && act[q.id]!=="");
+  if(conValor.length===0) return <div className="mini">Actividad registrada (sin datos).</div>;
+  return (<>{conValor.map(q=>(
+    <div key={q.id} style={{fontSize:12.5,marginBottom:2}}><b>{q.texto}:</b> {q.tipo==="combinacion"
+      ? (q.partes||[]).map(p=>labelDeValor((act[q.id]||{})[p.id])).filter(v=>v&&v!=="—").join(" · ")
+      : labelDeValor(act[q.id])}</div>
+  ))}</>);
+}
+
+/* ============================ APP ============================ */
+const App=()=>{
+  const [theme,setTheme]=useState("light");
+  const [users,setUsers]=useState([]);
+  const [schools,setSchools]=useState([]);
+  const [campaigns,setCampaigns]=useState([]);      // sin campaña pre-establecida (aún en memoria, ver README)
+  const [records,setRecords]=useState([]);          // registros por CE/campaña (aún en memoria, ver README)
+  const [session,setSession]=useState(null);
+  const [cargandoSesion,setCargandoSesion]=useState(true); // evita el parpadeo de "Login" mientras se revisa si ya había sesión
+  const [view,setView]=useState("bandeja");
+  const [filtro,setFiltro]=useState(defaultFiltro); // {desde,hasta} — día único (desde===hasta) o período
+  const [pausa,setPausa]=useState(false);           // pausar nuevas llamadas (global)
+  const [toast,setToast]=useState(null);
+  const [dailyLog,setDailyLog]=useState([]);
+  const [limites,setLimites]=useState(()=>{const m={};AUXILIARES.forEach(k=>m[k]=LIMITES_DEFAULT[k]*60);return m;}); // segundos por auxiliar
+  const [auxHabilitados,setAuxHabilitados]=useState(()=>{const m={};AUXILIARES.forEach(k=>m[k]=true);return m;});
+  const [auxUltimoCambio,setAuxUltimoCambio]=useState(null); // {por, cuando}
+  const [recoveryUserId,setRecoveryUserId]=useState(null); // id del usuario que está recuperando su contraseña (aún sin sesión)
+
+  useEffect(()=>{document.documentElement.setAttribute("data-theme",theme);},[theme]);
+  const notify=(m,kind="ok")=>{setToast({m,kind});setTimeout(()=>setToast(null),2800);};
+
+  // cargar todo lo que depende de la sesión (perfiles, centros, tiempos) una vez que hay alguien autenticado
+  const cargarDatosDeSesion=async(perfilPropio)=>{
+    const [perfiles,centros,tiempos]=await Promise.all([fetchProfiles(),fetchCentrosEscolares(),fetchTiemposDiarios()]);
+    setUsers(perfiles.length?perfiles:[perfilPropio]);
+    setSchools(centros);
+    setDailyLog(tiempos);
+  };
+
+  // al montar: ¿ya había una sesión activa (el navegador la recuerda)?
+  useEffect(()=>{
+    if(!supabase){ setCargandoSesion(false); return; }
+    (async()=>{
+      const {data:{session:sesionSupabase}}=await supabase.auth.getSession();
+      if(sesionSupabase&&sesionSupabase.user){
+        const {data:perfil}=await supabase.from("profiles").select("*").eq("id",sesionSupabase.user.id).single();
+        if(perfil&&perfil.estado==="activo"){
+          const u={...dbProfileToUser(perfil),email:sesionSupabase.user.email};
+          setSession(u);
+          await cargarDatosDeSesion(u);
+        }
+      }
+      setCargandoSesion(false);
+    })();
+    const {data:sub}=supabase.auth.onAuthStateChange((event)=>{
+      if(event==="PASSWORD_RECOVERY") setRecoveryUserId("recuperacion-supabase");
+    });
+    return ()=>sub&&sub.subscription&&sub.subscription.unsubscribe();
+  },[]);
+
+  // reflejar cambios de la sesión en la lista de usuarios (estatus, skill, etc.) — optimista en memoria + persistido en Supabase
+  const patchUser=(id,patch)=>{
+    setUsers(p=>p.map(u=>u.id===id?{...u,...patch}:u));
+    if(session&&session.id===id) setSession(s=>({...s,...patch}));
+    if(supabase) updateProfile(id,patch);
+  };
+  const bumpDaily=(agentId,date,field,deltaSec)=>{
+    bumpDailyLog(setDailyLog,agentId,date,field,deltaSec);
+    if(supabase) bumpTiempoDiario(agentId,date,field,deltaSec);
+  };
+  const toggleAuxiliar=k=>{
+    setAuxHabilitados(p=>({...p,[k]:p[k]===false}));
+    setAuxUltimoCambio({por:session?session.nombre:"—",cuando:Date.now()});
+  };
+
+  const ctx={theme,setTheme,users,setUsers,patchUser,schools,setSchools,campaigns,setCampaigns,records,setRecords,session,setSession,view,setView,filtro,setFiltro,pausa,setPausa,notify,dailyLog,setDailyLog,bumpDaily,limites,setLimites,auxHabilitados,setAuxHabilitados,auxUltimoCambio,toggleAuxiliar,recoveryUserId,setRecoveryUserId,cargarDatosDeSesion};
+  if(cargandoSesion) return <div className="login-wrap"><div className="login-panel"><div className="login-card"><p className="sub">Cargando…</p></div></div></div>;
+  if(recoveryUserId) return <CambiarPassword ctx={ctx} modo="recuperacion"/>;
+  if(!session) return <Login ctx={ctx}/>;
+  if(session.debeCambiarPassword) return <CambiarPassword ctx={ctx} modo="primerIngreso"/>;
+  return <Shell ctx={ctx} toast={toast}/>;
+};
+
+/* ============================ LOGIN ============================ */
+function Login({ctx}){
+  const {setSession,setView,cargarDatosDeSesion,notify}=ctx;
+  const [mode,setMode]=useState("login"); // login | reg | olvide
+  const [email,setEmail]=useState("");
+  const [pass,setPass]=useState("");
+  const [msg,setMsg]=useState(null);
+  const [loading,setLoading]=useState(false);
+  const [rn,setRn]=useState(""),[re,setRe]=useState(""),[rp,setRp]=useState(""),[rr,setRr]=useState("Agente");
+  const [fpEmail,setFpEmail]=useState("");
+  const firstView=u=>CAN[u.rol].bandeja?"bandeja":(CAN[u.rol].campanas?"campanas":"consulta");
+
+  const login=async()=>{
+    if(!supabase) return setMsg({k:"err",t:"Falta configurar la conexión a Supabase."});
+    setMsg(null);setLoading(true);
+    const {data,error}=await supabase.auth.signInWithPassword({email:email.trim(),password:pass});
+    if(error){ setLoading(false); return setMsg({k:"err",t:mapAuthError(error)}); }
+    const {data:perfil,error:perr}=await supabase.from("profiles").select("*").eq("id",data.user.id).single();
+    if(perr||!perfil){ setLoading(false); await supabase.auth.signOut(); return setMsg({k:"err",t:"No se encontró tu perfil. Contacta al Administrador."}); }
+    if(perfil.estado==="pendiente"){ setLoading(false); await supabase.auth.signOut(); return setMsg({k:"info",t:"Tu cuenta está pendiente de aprobación por un Administrador o Supervisor."}); }
+    if(perfil.estado==="inactivo"){ setLoading(false); await supabase.auth.signOut(); return setMsg({k:"err",t:"Tu cuenta fue dada de baja. Contacta al Administrador."}); }
+    const u={...dbProfileToUser(perfil),email:data.user.email,loginSince:Date.now()};
+    await updateProfile(u.id,{loginSince:u.loginSince});
+    const ms=Date.now(),hoy=dayKey();
+    await registrarPrimerLoginDB(u.id,hoy,ms);
+    await cargarDatosDeSesion(u);
+    setLoading(false);
+    console.log(`[LOGIN] ${u.nombre} (${u.rol}) · ${hoy} ${new Date(ms).toLocaleTimeString("es-SV")} — primer login del día registrado si no existía uno previo.`);
+    setSession(u);setView(firstView(u));
+  };
+
+  const register=async()=>{
+    if(!supabase) return setMsg({k:"err",t:"Falta configurar la conexión a Supabase."});
+    if(!rn||!re||!rp)return setMsg({k:"err",t:"Completa todos los campos."});
+    if(!passwordValida(rp))return setMsg({k:"err",t:"La contraseña no cumple los requisitos mínimos (ver la lista debajo del campo)."});
+    setLoading(true);
+    const {error}=await supabase.auth.signUp({email:re.trim(),password:rp,options:{data:{nombre:rn,rol:rr}}});
+    setLoading(false);
+    if(error) return setMsg({k:"err",t:mapAuthError(error)});
+    setMsg({k:"ok",t:"Solicitud enviada. Un Administrador o Supervisor debe aprobar tu acceso."});setMode("login");setEmail(re.trim());setPass("");
+  };
+
+  const olvide=async()=>{
+    if(!supabase) return setMsg({k:"err",t:"Falta configurar la conexión a Supabase."});
+    if(!fpEmail)return setMsg({k:"err",t:"Escribe tu correo institucional."});
+    setLoading(true);
+    const {error}=await supabase.auth.resetPasswordForEmail(fpEmail.trim(),{redirectTo:window.location.href.split("#")[0].split("?")[0]});
+    setLoading(false);
+    // Por seguridad no revelamos si el correo existe o no (Supabase ya se comporta así).
+    if(error) return setMsg({k:"err",t:mapAuthError(error)});
+    setMsg({k:"ok",t:"Si ese correo tiene una cuenta, te enviamos un enlace para crear una nueva contraseña. Revisa tu bandeja de entrada (y spam)."});
+  };
+
+  return (<div className="login-wrap">
+    <div className="login-hero">
+      <div className="crest"><div className="mark">M</div>Ministerio de Educación · El Salvador</div>
+      <div>
+        <h1>Actividades de Centros Educativos</h1>
+        <p className="lead">Levantamiento semanal por teléfono: asigna centros, registra actividades y da seguimiento en tiempo real.</p>
+        <div className="pulse-row">
+          <span className="pulse"><i style={{background:"#2fbd77"}}/>Bandeja por agente</span>
+          <span className="pulse"><i style={{background:"#ffb71a"}}/>Registro por día o período</span>
+          <span className="pulse"><i style={{background:"#5b8def"}}/>Consulta y edición</span>
+        </div>
+      </div>
+      <div className="foot">Acceso restringido a personal autorizado · GOES 2026</div>
+      <div className="ticker mono">12345 · Contactado · 3 actividades — 12348 · Llamar nuevamente — 12350 · Contactado · 1 actividad — 12347 · No contestó —</div>
+    </div>
+    <div className="login-panel"><div className="login-card">
+      {mode==="login"&&<>
+        <h2>Iniciar sesión</h2><p className="sub">Ingresa con tu correo institucional.</p>
+        {msg&&<div className={"alert alert-"+(msg.k==="err"?"err":msg.k==="ok"?"ok":"info")}>{msg.t}</div>}
+        <div className="field"><label>Correo</label><input className="input" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()} placeholder="usuario@goes.gob.sv"/></div>
+        <div className="field"><label>Contraseña</label><input className="input" type="password" value={pass} onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()} placeholder="••••••"/></div>
+        <button className="btn btn-primary" disabled={loading} onClick={login}>{loading?"Entrando…":"Entrar"}</button>
+        <p className="hint">
+          <span className="link" onClick={()=>{setMode("olvide");setMsg(null);setFpEmail(email);}}>¿Olvidaste tu contraseña?</span><br/>
+          ¿No tienes cuenta? <span className="link" onClick={()=>{setMode("reg");setMsg(null);}}>Crear usuario</span></p>
+      </>}
+      {mode==="reg"&&<>
+        <h2>Crear usuario</h2><p className="sub">Tu acceso quedará pendiente hasta su aprobación.</p>
+        {msg&&<div className={"alert alert-"+(msg.k==="err"?"err":"ok")}>{msg.t}</div>}
+        <div className="field"><label>Nombre completo</label><input className="input" value={rn} onChange={e=>setRn(e.target.value)}/></div>
+        <div className="field"><label>Correo institucional</label><input className="input" value={re} onChange={e=>setRe(e.target.value)} placeholder="usuario@goes.gob.sv"/></div>
+        <div className="field"><label>Contraseña</label><input className="input" type="password" value={rp} onChange={e=>setRp(e.target.value)}/>
+          <PasswordChecklist value={rp}/>
+        </div>
+        <div className="field"><label>Rol solicitado</label><select className="input" value={rr} onChange={e=>setRr(e.target.value)}>{ROLES.map(r=><option key={r}>{r}</option>)}</select></div>
+        <button className="btn btn-primary" disabled={loading} onClick={register}>{loading?"Enviando…":"Solicitar acceso"}</button>
+        <p className="hint">¿Ya tienes cuenta? <span className="link" onClick={()=>{setMode("login");setMsg(null);}}>Iniciar sesión</span></p>
+      </>}
+      {mode==="olvide"&&<>
+        <h2>Recuperar contraseña</h2><p className="sub">Te enviaremos un enlace a tu correo para crear una nueva contraseña.</p>
+        {msg&&<div className={"alert alert-"+(msg.k==="err"?"err":"ok")}>{msg.t}</div>}
+        <div className="field"><label>Correo institucional</label><input className="input" value={fpEmail} onChange={e=>setFpEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&olvide()} placeholder="usuario@goes.gob.sv"/></div>
+        <button className="btn btn-primary" disabled={loading} onClick={olvide}>{loading?"Enviando…":"Enviar enlace de recuperación"}</button>
+        <p className="hint"><span className="link" onClick={()=>{setMode("login");setMsg(null);}}>Volver a iniciar sesión</span></p>
+        <small className="muted" style={{display:"block",marginTop:8}}>El enlace te traerá de vuelta a esta misma página para elegir tu nueva contraseña. Si la app aún no está publicada en una URL fija (por ejemplo GitHub Pages), este enlace podría no funcionar correctamente.</small>
+      </>}
+    </div></div>
+  </div>);
+}
+
+/* ---- pantalla de cambio de contraseña (primer ingreso obligatorio, o tras "recuperar contraseña") ---- */
+function CambiarPassword({ctx,modo}){
+  const {session,setSession,recoveryUserId,setRecoveryUserId,notify}=ctx;
+  const [p1,setP1]=useState("");
+  const [p2,setP2]=useState("");
+  const [msg,setMsg]=useState(null);
+  const [loading,setLoading]=useState(false);
+
+  const guardar=async()=>{
+    if(!supabase) return setMsg({k:"err",t:"Falta configurar la conexión a Supabase."});
+    if(!passwordValida(p1)) return setMsg({k:"err",t:"La contraseña no cumple los requisitos mínimos."});
+    if(p1!==p2) return setMsg({k:"err",t:"Las dos contraseñas no coinciden."});
+    setLoading(true);
+    const {data,error}=await supabase.auth.updateUser({password:p1});
+    if(!error && data && data.user){
+      await supabase.from("profiles").update({debe_cambiar_password:false}).eq("id",data.user.id);
+    }
+    setLoading(false);
+    if(error) return setMsg({k:"err",t:mapAuthError(error)});
+    notify("Contraseña actualizada correctamente.");
+    if(modo==="recuperacion"){ setRecoveryUserId(null); await supabase.auth.signOut(); }
+    else { setSession(s=>({...s,debeCambiarPassword:false})); }
+  };
+
+  return (<div className="login-wrap">
+    <div className="login-hero">
+      <div className="crest"><div className="mark">M</div>Ministerio de Educación · El Salvador</div>
+      <div><h1>{modo==="primerIngreso"?"Configura tu nueva contraseña":"Restablece tu contraseña"}</h1>
+        <p className="lead">{modo==="primerIngreso"?"Por seguridad, debes cambiar tu contraseña antes de continuar.":"Elige una nueva contraseña para tu cuenta."}</p></div>
+      <div className="foot">Acceso restringido a personal autorizado · GOES 2026</div>
+    </div>
+    <div className="login-panel"><div className="login-card">
+      <h2>Nueva contraseña</h2>
+      {msg&&<div className={"alert alert-"+(msg.k==="err"?"err":"ok")}>{msg.t}</div>}
+      <div className="field"><label>Nueva contraseña</label><input className="input" type="password" value={p1} onChange={e=>setP1(e.target.value)}/>
+        <PasswordChecklist value={p1}/>
+      </div>
+      <div className="field"><label>Confirmar nueva contraseña</label><input className="input" type="password" value={p2} onChange={e=>setP2(e.target.value)} onKeyDown={e=>e.key==="Enter"&&guardar()}/></div>
+      <button className="btn btn-primary" disabled={loading} onClick={guardar}>{loading?"Guardando…":"Guardar contraseña"}</button>
+      {modo==="recuperacion" && <p className="hint"><span className="link" onClick={async()=>{setRecoveryUserId(null);await supabase.auth.signOut();}}>Cancelar y volver a iniciar sesión</span></p>}
+    </div></div>
+  </div>);
+}
+
+/* ---- modal de cambio de contraseña voluntario (usuario ya con sesión iniciada) ---- */
+function CambiarPasswordModal({ctx,onClose}){
+  const {session,notify}=ctx;
+  const [actual,setActual]=useState("");
+  const [p1,setP1]=useState("");
+  const [p2,setP2]=useState("");
+  const [msg,setMsg]=useState(null);
+  const [loading,setLoading]=useState(false);
+
+  const guardar=async()=>{
+    if(!supabase) return setMsg({k:"err",t:"Falta configurar la conexión a Supabase."});
+    if(!actual) return setMsg({k:"err",t:"Escribe tu contraseña actual."});
+    if(!passwordValida(p1)) return setMsg({k:"err",t:"La nueva contraseña no cumple los requisitos mínimos."});
+    if(p1!==p2) return setMsg({k:"err",t:"Las dos contraseñas nuevas no coinciden."});
+    setLoading(true);
+    // confirmamos la contraseña actual re-autenticando antes de cambiarla
+    const {error:errActual}=await supabase.auth.signInWithPassword({email:session.email,password:actual});
+    if(errActual){ setLoading(false); return setMsg({k:"err",t:"La contraseña actual no es correcta."}); }
+    const {error}=await supabase.auth.updateUser({password:p1});
+    setLoading(false);
+    if(error) return setMsg({k:"err",t:mapAuthError(error)});
+    notify("Contraseña actualizada correctamente.");
+    onClose();
+  };
+
+  return (<Modal title="Cambiar contraseña" onClose={onClose} foot={<><button className="btn btn-ghost" onClick={onClose}>Cancelar</button><button className="btn btn-accent" disabled={loading} onClick={guardar}>{loading?"Guardando…":"Guardar"}</button></>}>
+    {msg&&<div className={"alert alert-"+(msg.k==="err"?"err":"ok")} style={{marginTop:0}}>{msg.t}</div>}
+    <div className="field"><label>Contraseña actual</label><input className="input" type="password" value={actual} onChange={e=>setActual(e.target.value)}/></div>
+    <div className="field"><label>Nueva contraseña</label><input className="input" type="password" value={p1} onChange={e=>setP1(e.target.value)}/>
+      <PasswordChecklist value={p1}/>
+    </div>
+    <div className="field" style={{marginBottom:0}}><label>Confirmar nueva contraseña</label><input className="input" type="password" value={p2} onChange={e=>setP2(e.target.value)} onKeyDown={e=>e.key==="Enter"&&guardar()}/></div>
+  </Modal>);
+}
+
+/* selector de semana */
+function FiltroFecha({filtro,setFiltro}){
+  const [open,setOpen]=useState(false);
+  const modo=filtro.desde===filtro.hasta?"dia":"periodo";
+  const setModo=m=>{ if(m==="dia") setFiltro({desde:filtro.desde,hasta:filtro.desde}); else setFiltro({desde:filtro.desde,hasta:addDays(filtro.desde,6)}); };
+  return (<div style={{position:"relative"}}>
+    <button className="weekpill" onClick={()=>setOpen(o=>!o)} title="Filtro de fecha">📅 {rangeLabel(filtro.desde,filtro.hasta)} <span style={{opacity:.6}}>▾</span></button>
+    {open && <>
+      <div style={{position:"fixed",inset:0,zIndex:39}} onClick={()=>setOpen(false)}/>
+      <div className="card card-pad" style={{position:"absolute",top:"110%",right:0,zIndex:40,width:270,boxShadow:"var(--shadow-lg)"}}>
+        <div className="seg" style={{marginBottom:10,width:"100%"}}>
+          <button className={modo==="dia"?"on":""} style={{flex:1}} onClick={()=>setModo("dia")}>Un día</button>
+          <button className={modo==="periodo"?"on":""} style={{flex:1}} onClick={()=>setModo("periodo")}>Período</button>
+        </div>
+        {modo==="dia" ? (
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            <button className="btn btn-ghost btn-sm" onClick={()=>setFiltro({desde:addDays(filtro.desde,-1),hasta:addDays(filtro.desde,-1)})}>‹</button>
+            <input className="input" type="date" value={filtro.desde} onChange={e=>setFiltro({desde:e.target.value,hasta:e.target.value})}/>
+            <button className="btn btn-ghost btn-sm" onClick={()=>setFiltro({desde:addDays(filtro.desde,1),hasta:addDays(filtro.desde,1)})}>›</button>
+          </div>
+        ) : (<>
+          <div className="field" style={{margin:"0 0 8px"}}><label>Desde</label><input className="input" type="date" value={filtro.desde} max={filtro.hasta} onChange={e=>setFiltro(f=>({...f,desde:e.target.value}))}/></div>
+          <div className="field" style={{margin:0}}><label>Hasta</label><input className="input" type="date" value={filtro.hasta} min={filtro.desde} onChange={e=>setFiltro(f=>({...f,hasta:e.target.value}))}/></div>
+        </>)}
+        <button className="btn btn-primary btn-sm" style={{marginTop:10,width:"100%"}} onClick={()=>setOpen(false)}>Aplicar</button>
+      </div>
+    </>}
+  </div>);
+}
+
+/* control de estatus operativo del agente (Activo/Baño/Break/Comida) */
+function AgentStatusControl({ctx}){
+  const {session,patchUser,bumpDaily,dailyLog,limites,auxHabilitados,notify}=ctx;
+  const cur=session.opStatus||"Activo";
+  const now=useNow(cur!=="Activo");
+  const elapsed=cur!=="Activo"?Math.max(0,liveTotal(dailyLog,session,STATUS_FIELD[cur],now)):0;
+  const limite=limites[cur]; // segundos, undefined para "Activo"
+  const nivel=cur!=="Activo"?nivelTiempo(elapsed,limite):null;
+  const set=k=>{
+    const s=session,t=Date.now(),old=s.opStatus||"Activo";
+    if(old!=="Activo" && s.statusSince && STATUS_FIELD[old]) bumpDaily(s.id,dayKey(),STATUS_FIELD[old],(t-s.statusSince)/1000);
+    patchUser(s.id,{opStatus:k,statusSince:k!=="Activo"?t:null});notify("Estatus: "+k);
+  };
+  const opciones=OP_STATUSES.filter(s=>s.k==="Activo"||auxHabilitados[s.k]!==false);
+  return (<div className="seg" title="Tu estatus operativo">
+    {opciones.map(s=><button key={s.k} className={cur===s.k?"on":""} onClick={()=>set(s.k)}>{s.k}</button>)}
+    {cur!=="Activo"&&<span className={"pill "+opPill(cur)} style={{marginLeft:4}}><i/><span style={estiloNivel(nivel)}>{fmtLong(elapsed)}</span>{limite?" / "+fmtLong(limite):""}</span>}
+  </div>);
+}
+
+/* ============================ SHELL ============================ */
+function Shell({ctx,toast}){
+  const {session,view,setView,theme,setTheme,setSession,patchUser,filtro,setFiltro,pausa,setPausa,bumpDaily}=ctx;
+  const can=CAN[session.rol];
+  const [cambiarPass,setCambiarPass]=useState(false);
+  const logout=async()=>{
+    const t=Date.now();const today=dayKey();
+    if(session.loginSince) bumpDaily(session.id,today,"loginSec",(t-session.loginSince)/1000);
+    const cur=session.opStatus||"Activo";
+    if(cur!=="Activo" && session.statusSince && STATUS_FIELD[cur]) bumpDaily(session.id,today,STATUS_FIELD[cur],(t-session.statusSince)/1000);
+    if(supabase) await registrarUltimoLogoutDB(session.id,today,t);
+    console.log(`[LOGOUT] ${session.nombre} (${session.rol}) · ${today} ${new Date(t).toLocaleTimeString("es-SV")} — último logout del día registrado.`);
+    patchUser(session.id,{loginSince:null,opStatus:"Activo",statusSince:null});
+    if(supabase) await supabase.auth.signOut();
+    setSession(null);
+  };
+  const nav=[
+    {k:"bandeja",ic:"📞",t:"Bandeja de llamadas",show:can.bandeja},
+    {k:"campanas",ic:"🎯",t:"Campañas",show:can.campanas},
+    {k:"consulta",ic:"🔎",t:"Consulta y edición",show:can.consulta},
+    {k:"equipo",ic:"🧑‍💼",t:"Equipo de agentes",show:can.equipo},
+    {k:"dashboard",ic:"📊",t:"Dashboard de avance",show:can.dashboard},
+    {k:"admin",ic:"🛡️",t:"Administración",show:can.admin},
+  ].filter(x=>x.show);
+  const titles={bandeja:"Bandeja de llamadas",campanas:"Campañas",consulta:"Consulta y edición (inbound)",equipo:"Equipo de agentes",dashboard:"Dashboard de avance",admin:"Administración de usuarios"};
+  const withWeek=["bandeja","campanas","consulta","dashboard"].includes(view);
+  const initials=session.nombre.split(" ").map(x=>x[0]).slice(0,2).join("");
+  return (<div className="shell">
+    <aside className="sidebar">
+      <div className="brand"><div className="mark">M</div><div><b>Actividades CE</b><span>MINED · Centro de Monitoreo</span></div></div>
+      <div className="nav-label">Módulos</div>
+      {nav.map(n=><button key={n.k} className={"nav-item"+(view===n.k?" active":"")} onClick={()=>setView(n.k)}><span className="ico">{n.ic}</span>{n.t}</button>)}
+      <div className="spacer"/>
+      <div className="me"><div className="avatar">{initials}</div><div className="grow"><b>{session.nombre}</b><span>{session.rol}</span></div></div>
+      <button className="nav-item" style={{marginTop:8}} onClick={()=>setCambiarPass(true)}><span className="ico">🔑</span>Cambiar contraseña</button>
+      <button className="nav-item" onClick={logout}><span className="ico">⎋</span>Cerrar sesión</button>
+    </aside>
+    <div className="main">
+      <header className="topbar">
+        <div><h3>{titles[view]}</h3><div className="crumb">MINED · Centro de Monitoreo · {session.rol}</div></div>
+        <div className="spacer"/>
+        {withWeek && <FiltroFecha filtro={filtro} setFiltro={setFiltro}/>}
+        {view==="bandeja" && can.gestionar && <AgentStatusControl ctx={ctx}/>}
+        <div className="toggle">
+          <button className={theme==="light"?"on":""} onClick={()=>setTheme("light")}>☀︎</button>
+          <button className={theme==="dark"?"on":""} onClick={()=>setTheme("dark")}>☾</button>
+        </div>
+      </header>
+      {pausa && <div style={{padding:"0 24px",marginTop:14}}><div className="banner banner-warn">⏸ Nuevas llamadas en pausa. Las llamadas en curso pueden finalizarse. {can.pausar && <span className="link" style={{marginLeft:6}} onClick={()=>setPausa(false)}>Reanudar</span>}</div></div>}
+      <div className="content">
+        {view==="bandeja" && <Bandeja ctx={ctx}/>}
+        {view==="campanas" && <Campanas ctx={ctx}/>}
+        {view==="consulta" && <Consulta ctx={ctx}/>}
+        {view==="equipo" && <Equipo ctx={ctx}/>}
+        {view==="dashboard" && <Dashboard ctx={ctx}/>}
+        {view==="admin" && <Administracion ctx={ctx}/>}
+      </div>
+    </div>
+    {toast && <div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",zIndex:80}}><div className={"alert alert-"+(toast.kind==="err"?"err":toast.kind==="info"?"info":"ok")} style={{boxShadow:"var(--shadow-lg)",margin:0}}>{toast.m}</div></div>}
+    {cambiarPass && <CambiarPasswordModal ctx={ctx} onClose={()=>setCambiarPass(false)}/>}
+  </div>);
+}
+
+/* ============================ BANDEJA DEL AGENTE ============================ */
+function Bandeja({ctx}){
+  const {session,schools,campaigns,records,filtro,pausa}=ctx;
+  const isAgent=session.rol==="Agente";
+  // campañas en curso cuyo rango de fechas se solapa con el filtro, donde el agente participa
+  const misCamp=campaigns.filter(c=>overlaps(c.fechaDesde,c.fechaHasta,filtro.desde,filtro.hasta) && c.estado==="En curso" && (!isAgent || Object.values(getAssign(c)).includes(session.id)));
+  const [campId,setCampId]=useState(null);
+  useEffect(()=>{ if(!misCamp.some(c=>c.id===campId)) setCampId(misCamp[0]?.id||null); },[filtro.desde,filtro.hasta,campaigns.length]);
+  const camp=misCamp.find(c=>c.id===campId)||misCamp[0];
+  const [active,setActive]=useState(null);
+
+  const gate=puedeLlamar(session,pausa,camp);
+
+  if(misCamp.length===0) return <div className="card card-pad"><div className="empty"><div className="big">📭</div>No tienes centros asignados para {rangeLabel(filtro.desde,filtro.hasta)}.<br/>Cuando un supervisor cree y te asigne una campaña, aparecerán aquí.</div></div>;
+
+  const assign=getAssign(camp);
+  const myCodes=camp.schoolCodes.filter(code=> isAgent ? assign[code]===session.id : true);
+  const recFor=code=>records.find(r=>r.campaignId===camp.id && r.codigo===code);
+  const rows=myCodes.map(code=>{const s=schools.find(x=>x.codigo===code);const r=recFor(code);return {s,r,estado:r?r.estado:"Pendiente"};}).filter(x=>x.s);
+  const enBandeja=rows.filter(x=>x.estado!=="Contactado" && x.estado!=="Cerrado por no contacto");
+  const cerradas=rows.filter(x=>x.estado==="Contactado" || x.estado==="Cerrado por no contacto");
+  const maxIntentos=camp.maxIntentos||DEFAULT_MAX_INTENTOS;
+  const btnLabel=r=> !r?"Contactar":(["No contestó","Número equivocado","Llamar nuevamente"].includes(r.estado)?"Reintentar":"Continuar");
+
+  return (<div className="grid">
+    <div className="card card-pad">
+      <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+        {misCamp.length>1
+          ? <select className="input" style={{width:"auto",fontWeight:600}} value={camp.id} onChange={e=>setCampId(e.target.value)}>{misCamp.map(c=><option key={c.id} value={c.id}>{c.titulo}</option>)}</select>
+          : <Pill kind="p-accent">{camp.titulo}</Pill>}
+        <span className="tag">{myCodes.length} asignados</span>
+        <span className="tag">{cerradas.filter(x=>x.estado==="Contactado").length} contactados</span>
+        <span className="tag">{enBandeja.length} en bandeja</span>
+      </div>
+      <p style={{color:"var(--text-dim)",margin:"8px 0 0"}}>{camp.objetivo}</p>
+    </div>
+
+    {!gate.ok && <div className="banner banner-warn">🔒 {gate.motivo}</div>}
+
+    <div>
+      <div className="section-title">Centros por contactar ({enBandeja.length})</div>
+      <div className="tbl-wrap" style={{maxHeight:360}}>
+        <table>
+          <thead><tr><th>Código</th><th>Centro Educativo</th><th>Depto.</th><th>Municipio</th><th>Teléfonos</th><th>Estado</th><th></th></tr></thead>
+          <tbody>
+            {enBandeja.map(({s,r,estado})=>(
+              <tr key={s.codigo}>
+                <td className="mono">{s.codigo}</td>
+                <td><div style={{fontWeight:600}}>{s.nombre}</div>
+                  <div style={{display:"flex",gap:4,marginTop:3}}>{s.programa&&<span className="tag">{s.programa}</span>}{s.control&&<span className="tag">Control</span>}</div></td>
+                <td>{s.departamento}</td><td>{s.municipio}</td>
+                <td className="mono" style={{fontSize:12}}>{s.telefonos.join(" · ")}</td>
+                <td><Pill kind={statePill(estado)}>{estado}</Pill>
+                  {r&&r.wrong&&r.wrong.length>0&&<span className="tag" style={{color:"var(--danger)",marginLeft:4}}>📵 {r.wrong.length}</span>}
+                  {r&&r.intentos>0&&estado!=="Pendiente"&&<div className="mini" style={{marginTop:3}}>{r.intentos}/{maxIntentos}</div>}
+                </td>
+                <td><button className="btn btn-accent btn-sm" disabled={!gate.ok} onClick={()=>setActive({s,r})}>{btnLabel(r)}</button></td>
+              </tr>
+            ))}
+            {enBandeja.length===0 && <tr><td colSpan={7}><div className="empty" style={{padding:26}}>Bandeja al día. No quedan centros por contactar.</div></td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div className="card card-pad">
+      <div className="section-title" style={{margin:0,marginBottom:10}}>Registro completado ({cerradas.length})</div>
+      {cerradas.length===0?<div className="empty" style={{padding:18}}>Aún no hay centros contactados o cerrados.</div>:
+      <div className="tbl-wrap"><table>
+        <thead><tr><th>Centro</th><th>Estado</th><th>Actividades</th><th></th></tr></thead>
+        <tbody>{cerradas.map(({s,r,estado})=>(
+          <tr key={s.codigo}><td className="mono">{s.codigo} · {s.nombre.slice(0,26)}</td>
+          <td><Pill kind={statePill(estado)}>{estado}</Pill></td>
+          <td className="mono">{r&&r.actividades?r.actividades.length:0}</td>
+          <td><button className="btn btn-ghost btn-sm" onClick={()=>setActive({s,r})}>Ver / editar</button></td></tr>))}
+        </tbody></table></div>}
+    </div>
+
+    {active && <CallPanel ctx={ctx} camp={camp} school={active.s} rec={active.r} onClose={()=>setActive(null)}/>}
+  </div>);
+}
+
+/* ---- Panel de llamada + registro de actividades (preguntas 100% parametrizadas por la campaña) ---- */
+function CallPanel({ctx,camp,school,rec,onClose}){
+  const {records,setRecords,session,notify}=ctx;
+  const [sec,setSec]=useState(0);
+  const [estado,setEstado]=useState(rec?rec.estado:null);
+  const [estado2,setEstado2]=useState(null);
+  const [wrong,setWrong]=useState(rec&&rec.wrong?rec.wrong:[]);
+  const [acts,setActs]=useState(rec&&rec.actividades?rec.actividades:[]);
+  const [editIdx,setEditIdx]=useState(null);
+  const [actualAns,setActualAns]=useState({}); // respuestas de la actividad que se está componiendo
+  useEffect(()=>{const id=setInterval(()=>setSec(s=>s+1),1000);return ()=>clearInterval(id);},[]);
+
+  const preguntas=camp.preguntas||[];
+  const maxIntentos=camp.maxIntentos||DEFAULT_MAX_INTENTOS;
+  const totalTel=(school.telefonos||[]).length;
+  const unSoloErrado=estado==="Número equivocado" && wrong.length===1 && totalTel>1;
+  const efectivo=estado==="Número equivocado" ? (unSoloErrado?estado2:"Número equivocado") : estado;
+  const intentosPrev=rec?rec.intentos||0:0;
+  const esNoContacto=["No contestó","Número equivocado","Llamar nuevamente"].includes(efectivo);
+  const toggleWrong=i=>setWrong(w=>w.includes(i)?w.filter(x=>x!==i):[...w,i]);
+
+  const iniciarEdicion=i=>{ setActualAns(acts[i]||{}); setEditIdx(i); };
+  const cancelarEdicion=()=>{ setActualAns({}); setEditIdx(null); };
+  const agregarActividad=()=>{
+    if(editIdx!=null){ setActs(p=>p.map((x,i)=>i===editIdx?actualAns:x)); }
+    else{ setActs(p=>[...p,actualAns]); }
+    setActualAns({});setEditIdx(null);
+  };
+  const delAct=i=>setActs(p=>p.filter((_,j)=>j!==i));
+
+  const persist=(nuevoEstado,intentosInc)=>{
+    const prev=records.find(r=>r.campaignId===camp.id&&r.codigo===school.codigo);
+    const base=prev||{id:uid("rec"),campaignId:camp.id,codigo:school.codigo,intentos:0,actividades:[]};
+    const nr={...base,agentId:base.agentId||session.id,estado:nuevoEstado,
+      actividades:nuevoEstado==="Contactado"?acts:base.actividades,
+      wrong:estado==="Número equivocado"?wrong:(base.wrong||[]),
+      intentos:(base.intentos||0)+(intentosInc?1:0),dur:sec,updatedMs:Date.now()};
+    setRecords(p=> prev?p.map(r=>r.id===prev.id?nr:r):[...p,nr]);
+    return nr;
+  };
+  const guardarContactado=()=>{
+    const actsFinal = acts.length? acts : (preguntas.length===0? [{}] : acts);
+    if(actsFinal.length===0)return notify("Registra al menos una actividad para marcar Contactado.","err");
+    setActs(actsFinal);
+    persist("Contactado",false);notify(`Contactado · ${actsFinal.length} actividad(es) · ${school.nombre.slice(0,24)}`);onClose();
+  };
+  const guardarEstado=()=>{
+    if(!estado)return notify("Selecciona el estado de la llamada.","err");
+    if(estado==="Número equivocado"){ if(wrong.length===0)return notify("Indica cuál número es equivocado.","err");
+      if(unSoloErrado&&!estado2)return notify("Indica qué pasó con el otro número.","err"); }
+    if(efectivo==="Contactado")return guardarContactado();
+    const nuevosIntentos=intentosPrev+(esNoContacto?1:0);
+    const cierraAuto=esNoContacto && nuevosIntentos>=maxIntentos;
+    const estadoFinal=cierraAuto?"Cerrado por no contacto":efectivo;
+    persist(estadoFinal,esNoContacto);
+    notify(cierraAuto?`Cerrado por no contacto tras ${nuevosIntentos} intentos (máximo ${maxIntentos}).`:`Registrado · ${estadoFinal}`);
+    onClose();
+  };
+  const cerrarNoContacto=()=>{persist("Cerrado por no contacto",false);notify("Centro cerrado por no contacto.");onClose();};
+
+  const foot=<>
+    <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+    {efectivo==="Contactado"
+      ? <button className="btn btn-accent" onClick={guardarContactado}>Finalizar registro</button>
+      : <button className="btn btn-primary" onClick={guardarEstado}>Guardar estado</button>}
+  </>;
+
+  return (<Modal title={`${school.nombre}`} onClose={onClose} foot={foot} wide>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+      <div className="mono" style={{color:"var(--text-dim)",fontSize:12.5}}>{school.codigo} · {school.municipio}, {school.departamento}{intentosPrev>0&&<> · intento #{intentosPrev+1} de {maxIntentos}</>}</div>
+      <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",borderRadius:10,background:"var(--surface-2)"}}><span className="live-dot"/><span className="timer" style={{fontSize:24}}>{fmt(sec)}</span></div>
+    </div>
+
+    <div className="section-title" style={{margin:"14px 0 6px"}}>Teléfonos</div>
+    <div className="row" style={{gap:8}}>{school.telefonos.map((t,i)=><span key={i} className="chip-btn" style={wrong.includes(i)?{background:"var(--danger)",borderColor:"var(--danger)",color:"#fff"}:null}>📱 {t}</span>)}</div>
+
+    <div className="divider"/>
+    <div className="section-title" style={{margin:"0 0 6px"}}>Estado de la llamada</div>
+    <div className="row" style={{gap:8}}>
+      {["Contactado","No contestó","Número equivocado","Llamar nuevamente"].map(k=>(
+        <button key={k} className={"chip-btn"+(estado===k?" on":"")} onClick={()=>{setEstado(k);if(k!=="Número equivocado"){setWrong([]);setEstado2(null);}}}>{k}</button>
+      ))}
+      <button className="chip-btn" style={{color:"var(--danger)"}} onClick={cerrarNoContacto}>Cerrar por no contacto</button>
+    </div>
+    {intentosPrev>0 && <small className="muted" style={{display:"block",marginTop:6}}>Intentos hasta ahora: {intentosPrev}/{maxIntentos}. Al llegar a {maxIntentos} sin contactar, el centro se cierra automáticamente.</small>}
+
+    {estado==="Número equivocado" && <div style={{marginTop:10}}>
+      <small className="muted">Marca cuál(es) número(s) están equivocados:</small>
+      <div className="row" style={{gap:8,marginTop:6}}>{school.telefonos.map((t,i)=>(
+        <label key={i} className="checkline" style={{border:"1px solid var(--border)",borderRadius:8,padding:"6px 10px"}}><input type="checkbox" checked={wrong.includes(i)} onChange={()=>toggleWrong(i)}/><span className="mono">{t}</span></label>))}
+      </div>
+      {unSoloErrado && <div style={{marginTop:12,padding:"12px 14px",borderRadius:10,background:"var(--info-bg)"}}>
+        <small style={{color:"var(--info)",fontWeight:600,display:"block",marginBottom:8}}>Solo un número es equivocado. ¿Qué pasó con el otro?</small>
+        <div className="row" style={{gap:8}}>{["Contactado","No contestó","Llamar nuevamente"].map(k=><button key={k} className={"chip-btn"+(estado2===k?" on":"")} onClick={()=>setEstado2(k)}>{k}</button>)}</div>
+      </div>}
+    </div>}
+
+    {efectivo==="Contactado" && <>
+      <div className="divider"/>
+      <div style={{display:"flex",alignItems:"center"}}><div className="section-title grow" style={{margin:0}}>Actividades registradas ({acts.length})</div></div>
+      <div style={{padding:"10px 12px",background:"var(--surface-2)",borderRadius:10,fontSize:13,color:"var(--text-dim)",margin:"8px 0 12px"}}>
+        «Le saludamos del Ministerio de Educación. Estamos registrando las actividades que su centro tiene programadas para {rangeLabel(camp.fechaDesde,camp.fechaHasta)}. ¿Podría indicarnos cuáles serán?»
+      </div>
+
+      {acts.map((a,i)=>(editIdx===i?null:
+        <div key={i} className="act-card">
+          <div style={{display:"flex",alignItems:"flex-start",gap:8}}>
+            <div className="grow"><ActividadResumen preguntas={preguntas} act={a}/></div>
+            <span style={{display:"flex",gap:6,flex:"none"}}>
+              <button className="link" onClick={()=>iniciarEdicion(i)}>Editar</button>
+              <button className="link" style={{color:"var(--danger)"}} onClick={()=>delAct(i)}>Eliminar</button>
+            </span>
+          </div>
+        </div>
+      ))}
+
+      <div className="card card-pad" style={{background:"var(--surface-2)",marginTop:6}}>
+        <div className="section-title" style={{marginTop:0}}>{editIdx!=null?"Editar actividad":"Nueva actividad"}</div>
+        <PreguntasEditor preguntas={preguntas} ans={actualAns} setAns={setActualAns}/>
+        <div style={{display:"flex",gap:8,marginTop:preguntas.length?4:0}}>
+          <button className="btn btn-primary btn-sm" onClick={agregarActividad}>{editIdx!=null?"Guardar cambios":"＋ Agregar actividad"}</button>
+          {editIdx!=null&&<button className="btn btn-ghost btn-sm" onClick={cancelarEdicion}>Cancelar edición</button>}
+        </div>
+      </div>
+    </>}
+  </Modal>);
+}
+
+/* ============================ CAMPAÑAS ============================ */
+function Campanas({ctx}){
+  const {campaigns,setCampaigns,records,setRecords,filtro,notify,session,users,schools}=ctx;
+  const can=CAN[session.rol];
+  const [wizard,setWizard]=useState(false);
+  const [dup,setDup]=useState(null);      // campaña a duplicar
+  const [reasg,setReasg]=useState(null);  // campaña a reasignar
+  const [cerrModal,setCerrModal]=useState(null); // campaña a gestionar cerrados
+  const [editPreg,setEditPreg]=useState(null);   // campaña a editar preguntas
+  const [verTodas,setVerTodas]=useState(false);
+  const lista=campaigns.filter(c=>verTodas||overlaps(c.fechaDesde,c.fechaHasta,filtro.desde,filtro.hasta));
+  const agName=id=>(users.find(u=>u.id===id)||{}).nombre||"—";
+
+  const toggleEstado=c=>setCampaigns(p=>p.map(x=>x.id===c.id?{...x,estado:x.estado==="En curso"?"Finalizada":"En curso"}:x));
+
+  return (<div className="grid">
+    <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+      <div className="grow"><div className="section-title" style={{margin:0}}>Campañas · {verTodas?"todas las fechas":rangeLabel(filtro.desde,filtro.hasta)}</div></div>
+      <label className="checkline" style={{border:"none",padding:0,gap:8}}><input type="checkbox" checked={verTodas} onChange={e=>setVerTodas(e.target.checked)}/><small className="muted">Ver todas las fechas</small></label>
+      {can.crear && <button className="btn btn-primary btn-sm" onClick={()=>setWizard(true)}>＋ Crear campaña</button>}
+    </div>
+    <div className="grid" style={{gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))"}}>
+      {lista.length===0 && <div className="card card-pad"><div className="empty">No hay campañas para este rango de fechas. Puedes gestionar varias campañas en paralelo; crea la primera.</div></div>}
+      {lista.map(c=>{const asg=getAssign(c);const rec=records.filter(r=>r.campaignId===c.id);const cont=rec.filter(r=>r.estado==="Contactado").length;const cerrados=rec.filter(r=>r.estado==="Cerrado por no contacto").length;return(
+        <div key={c.id} className="card card-pad">
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <Pill kind={c.estado==="En curso"?"p-success":"p-neutral"}>{c.estado}</Pill>
+            <small className="muted">{rangeLabel(c.fechaDesde,c.fechaHasta)}</small>
+          </div>
+          <h4 style={{margin:"10px 0 6px"}}>{c.titulo}</h4>
+          <p style={{color:"var(--text-dim)",fontSize:13,margin:0,minHeight:36}}>{c.objetivo}</p>
+          <div className="divider" style={{margin:"12px 0"}}/>
+          <div className="row" style={{gap:14,fontSize:13}}><span>🏫 <b>{c.schoolCodes.length}</b> CE</span><span>🎧 <b>{c.agentIds.length}</b> agentes</span><span>✅ <b>{cont}</b> contactados</span>{c.preguntas&&c.preguntas.length>0&&<span>❓ <b>{c.preguntas.length}</b> preguntas</span>}</div>
+          <div style={{display:"flex",gap:6,marginTop:12,flexWrap:"wrap"}}>
+            {can.crear && <button className="btn btn-ghost btn-sm" onClick={()=>setEditPreg(c)}>✏️ Editar preguntas</button>}
+            {can.reasignar && <button className="btn btn-ghost btn-sm" onClick={()=>setReasg(c)}>Reasignar</button>}
+            {can.duplicar && <button className="btn btn-ghost btn-sm" onClick={()=>setDup(c)}>Duplicar</button>}
+            {can.crear && <button className="btn btn-ghost btn-sm" onClick={()=>toggleEstado(c)}>{c.estado==="En curso"?"Finalizar":"Reactivar"}</button>}
+            {can.exportar && <button className="btn btn-ghost btn-sm" onClick={()=>exportarCampanaExcel(c,schools,users,records)}>⬇ Excel</button>}
+            {can.gestionarCerrados && cerrados>0 && <button className="btn btn-ghost btn-sm" style={{color:"var(--danger)"}} onClick={()=>setCerrModal(c)}>🔒 Cerrados ({cerrados})</button>}
+          </div>
+        </div>);})}
+    </div>
+    {wizard && <CampaignWizard ctx={ctx} onClose={()=>setWizard(false)}/>}
+    {dup && <DuplicateModal ctx={ctx} camp={dup} onClose={()=>setDup(null)}/>}
+    {reasg && <ReassignModal ctx={ctx} camp={reasg} onClose={()=>setReasg(null)}/>}
+    {cerrModal && <CerradosModal ctx={ctx} camp={cerrModal} onClose={()=>setCerrModal(null)}/>}
+    {editPreg && <EditQuestionsModal ctx={ctx} camp={editPreg} onClose={()=>setEditPreg(null)}/>}
+  </div>);
+}
+
+/* ---- Exportar a Excel la base de una campaña con sus resultados (Admin/Supervisor) ---- */
+function exportarCampanaExcel(camp,schools,users,records){
+  if(typeof XLSX==="undefined") return;
+  const asg=getAssign(camp);
+  const agName=id=>(users.find(u=>u.id===id)||{}).nombre||"—";
+  const recFor=code=>records.find(r=>r.campaignId===camp.id&&r.codigo===code);
+
+  const centros=camp.schoolCodes.map(code=>{
+    const s=schools.find(x=>x.codigo===code)||{};
+    const r=recFor(code);
+    return {
+      "Código":code,"Centro Educativo":s.nombre||"","Departamento":s.departamento||"","Municipio":s.municipio||"",
+      "Teléfonos":(s.telefonos||[]).join(" / "),"Agente asignado":agName(asg[code]),
+      "Estado":r?r.estado:"Pendiente","Intentos":r?r.intentos||0:0,
+    };
+  });
+
+  const preguntas=camp.preguntas||[];
+  const columnasPreg=[];
+  preguntas.forEach(q=>{ if(q.tipo==="combinacion") (q.partes||[]).forEach(p=>columnasPreg.push({label:`${q.texto} · ${p.label||p.id}`,q,partId:p.id})); else columnasPreg.push({label:q.texto,q,partId:null}); });
+
+  const actividades=[];
+  camp.schoolCodes.forEach(code=>{
+    const s=schools.find(x=>x.codigo===code)||{};
+    const r=recFor(code);
+    if(!r||!r.actividades||r.actividades.length===0) return;
+    r.actividades.forEach((act,i)=>{
+      const fila={"Código":code,"Centro Educativo":s.nombre||"","Agente":agName(r.agentId),"N.° actividad":i+1,
+        "Fecha de registro":r.updatedMs?new Date(r.updatedMs).toLocaleString("es-SV"):""};
+      columnasPreg.forEach(c=>{ fila[c.label]=labelDeValor(valoresActividad(act,c.q,c.partId)); });
+      actividades.push(fila);
+    });
+  });
+
+  const wb=XLSX.utils.book_new();
+  const wsCentros=XLSX.utils.json_to_sheet(centros);
+  XLSX.utils.book_append_sheet(wb,wsCentros,"Centros");
+  if(actividades.length){
+    const wsAct=XLSX.utils.json_to_sheet(actividades);
+    XLSX.utils.book_append_sheet(wb,wsAct,"Actividades");
+  }
+  const nombreArchivo=`campana_${camp.titulo.replace(/[^a-z0-9]+/gi,"_").slice(0,40)}.xlsx`;
+  XLSX.writeFile(wb,nombreArchivo);
+}
+
+/* ---- Duplicar campaña (sin respuestas, exige nuevo nombre) ---- */
+function DuplicateModal({ctx,camp,onClose}){
+  const {campaigns,setCampaigns,notify}=ctx;
+  const [nombre,setNombre]=useState(camp.titulo+" (copia)");
+  const [err,setErr]=useState(null);
+  const dup=()=>{
+    const n=nombre.trim();
+    if(!n)return setErr("Escribe un nombre.");
+    if(n.toLowerCase()===camp.titulo.toLowerCase())return setErr("El nombre debe ser distinto al de la campaña original.");
+    if(campaigns.some(c=>c.titulo.toLowerCase()===n.toLowerCase()))return setErr("Ya existe una campaña con ese nombre.");
+    const copia={...camp,id:uid("c"),titulo:n,fecha:new Date().toISOString(),estado:"En curso",
+      assign:{...getAssign(camp)}}; // conserva CE y agentes; NO copia registros/respuestas
+    setCampaigns(p=>[...p,copia]);
+    notify("Campaña duplicada sin registros: "+n);onClose();
+  };
+  return (<Modal title="Duplicar campaña" onClose={onClose} foot={<><button className="btn btn-ghost" onClick={onClose}>Cancelar</button><button className="btn btn-accent" onClick={dup}>Duplicar</button></>}>
+    <p style={{color:"var(--text-dim)",marginTop:0}}>Se copiarán los centros educativos, los agentes y su asignación de «{camp.titulo}». <b>No se copiarán los registros ni las respuestas.</b> Debes asignar un nombre diferente.</p>
+    <div className="field"><label>Nombre de la nueva campaña</label><input className="input" value={nombre} onChange={e=>setNombre(e.target.value)}/></div>
+    {err&&<div className="alert alert-err">{err}</div>}
+  </Modal>);
+}
+
+/* ---- Reasignar CE no contactados: por agente(s) o por turno, siempre de forma equitativa ---- */
+function ReassignModal({ctx,camp,onClose}){
+  const {campaigns,setCampaigns,records,records:recs,setRecords,schools,users,notify}=ctx;
+  const [modo,setModo]=useState("agente"); // agente | turno
+  const asg=getAssign(camp);
+  const campAgentes=camp.agentIds.map(id=>users.find(u=>u.id===id)).filter(Boolean);
+  const agentesDisponibles=users.filter(u=>u.rol==="Agente"&&u.estado==="activo"&&u.disponible!==false);
+
+  const [origenAgentes,setOrigenAgentes]=useState(camp.agentIds); // por defecto: todos
+  const [destinoAgentes,setDestinoAgentes]=useState(camp.agentIds.filter(id=>agentesDisponibles.some(a=>a.id===id)));
+  const [origenTurno,setOrigenTurno]=useState("AM");
+  const [destinoTurno,setDestinoTurno]=useState("PM");
+
+  const recFor=code=>recs.find(r=>r.campaignId===camp.id&&r.codigo===code);
+  const noContactado=code=>{const r=recFor(code);return !r||r.estado!=="Contactado";};
+
+  const sourceCodes=useMemo(()=>{
+    if(modo==="agente") return camp.schoolCodes.filter(code=>noContactado(code) && origenAgentes.includes(asg[code]));
+    return camp.schoolCodes.filter(code=>{ if(!noContactado(code)) return false; const ag=campAgentes.find(a=>a.id===asg[code]); return ag&&ag.turno===origenTurno; });
+  },[modo,origenAgentes,origenTurno,camp.schoolCodes,recs]);
+
+  const destinoIds=useMemo(()=>{
+    if(modo==="agente") return destinoAgentes;
+    return agentesDisponibles.filter(a=>a.turno===destinoTurno).map(a=>a.id);
+  },[modo,destinoAgentes,destinoTurno,agentesDisponibles]);
+
+  const [selected,setSelected]=useState(sourceCodes);
+  useEffect(()=>{ setSelected(sourceCodes); },[JSON.stringify(sourceCodes)]);
+
+  const toggleCode=code=>setSelected(p=>p.includes(code)?p.filter(x=>x!==code):[...p,code]);
+  const toggleOrigenAgente=id=>setOrigenAgentes(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);
+  const toggleDestinoAgente=id=>setDestinoAgentes(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);
+
+  const perAgent=destinoIds.length?Math.floor(selected.length/destinoIds.length):0;
+  const resto=destinoIds.length?selected.length%destinoIds.length:0;
+  const agName=id=>(users.find(u=>u.id===id)||{}).nombre||"—";
+
+  const guardar=()=>{
+    if(selected.length===0) return notify("No hay centros seleccionados para reasignar.","err");
+    if(destinoIds.length===0) return notify("Selecciona al menos un agente destino.","err");
+    const nuevoParcial=buildAssign(selected,destinoIds);
+    setCampaigns(p=>p.map(c=>{
+      if(c.id!==camp.id) return c;
+      const agentIds=[...new Set([...c.agentIds,...destinoIds])];
+      return {...c,agentIds,assign:{...getAssign(c),...nuevoParcial}};
+    }));
+    setRecords(p=>p.map(r=> (r.campaignId===camp.id && selected.includes(r.codigo)) ? {...r,agentId:nuevoParcial[r.codigo]||r.agentId} : r));
+    notify(`Reasignados ${selected.length} centro(s) entre ${destinoIds.length} agente(s), de forma equitativa.`);
+    onClose();
+  };
+
+  return (<Modal title={`Reasignar centros no contactados · ${camp.titulo}`} onClose={onClose} wide foot={<><button className="btn btn-ghost" onClick={onClose}>Cancelar</button><button className="btn btn-primary" onClick={guardar} disabled={!selected.length||!destinoIds.length}>Guardar reasignación</button></>}>
+    <p style={{color:"var(--text-dim)",marginTop:0}}>Solo se reasignan los centros <b>no contactados</b>. La distribución entre los agentes destino siempre es equitativa. Los registros ya capturados se conservan.</p>
+
+    <div className="seg" style={{marginBottom:14}}>
+      <button className={modo==="agente"?"on":""} onClick={()=>setModo("agente")}>Por agente</button>
+      <button className={modo==="turno"?"on":""} onClick={()=>setModo("turno")}>Por turno</button>
+    </div>
+
+    {modo==="agente" ? (<div className="row" style={{gap:20,alignItems:"flex-start"}}>
+      <div className="grow">
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+          <b style={{fontSize:13}}>Desde</b>
+          <button className="link" onClick={()=>setOrigenAgentes(origenAgentes.length===camp.agentIds.length?[]:camp.agentIds)}>{origenAgentes.length===camp.agentIds.length?"Ninguno":"Todos los agentes"}</button>
+        </div>
+        <div className="card" style={{maxHeight:220,overflow:"auto"}}>{campAgentes.map(a=>(
+          <label key={a.id} className="checkline" style={{padding:"8px 12px"}}>
+            <input type="checkbox" checked={origenAgentes.includes(a.id)} onChange={()=>toggleOrigenAgente(a.id)}/>
+            <span className="grow">{a.nombre} <span className="tag">{a.turno}</span></span>
+          </label>))}
+        </div>
+      </div>
+      <div className="grow">
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+          <b style={{fontSize:13}}>Hacia</b>
+          <button className="link" onClick={()=>setDestinoAgentes(destinoAgentes.length===agentesDisponibles.length?[]:agentesDisponibles.map(a=>a.id))}>{destinoAgentes.length===agentesDisponibles.length?"Ninguno":"Todos los agentes disponibles"}</button>
+        </div>
+        <div className="card" style={{maxHeight:220,overflow:"auto"}}>{agentesDisponibles.map(a=>{const otras=otrasCampanasActivas(a.id,campaigns,camp.id);return(
+          <label key={a.id} className="checkline" style={{padding:"8px 12px"}}>
+            <input type="checkbox" checked={destinoAgentes.includes(a.id)} onChange={()=>toggleDestinoAgente(a.id)}/>
+            <span className="grow">{a.nombre} <span className="tag">{a.turno}</span>
+              {otras.length>0 && <span className="tag" style={{color:"var(--warn)",marginLeft:6}} title={otras.map(c=>c.titulo).join(", ")}>📌 {otras.length===1?otras[0].titulo:`${otras.length} bases activas`}</span>}
+            </span>
+          </label>);})}
+        </div>
+      </div>
+    </div>) : (<div className="row" style={{gap:20}}>
+      <div><b style={{fontSize:13,display:"block",marginBottom:6}}>Desde el turno</b>
+        <div className="seg">{["AM","PM"].map(t=><button key={t} className={origenTurno===t?"on":""} onClick={()=>setOrigenTurno(t)}>{t}</button>)}</div></div>
+      <div><b style={{fontSize:13,display:"block",marginBottom:6}}>Hacia el turno</b>
+        <div className="seg">{["AM","PM"].map(t=><button key={t} className={destinoTurno===t?"on":""} onClick={()=>setDestinoTurno(t)}>{t}</button>)}</div></div>
+    </div>)}
+
+    <div className="divider"/>
+    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+      <div className="grow"><b style={{fontSize:13}}>Centros elegibles (no contactados): {sourceCodes.length}</b><br/><small className="muted">Por defecto se reasignan todos; des-selecciona los que no quieras mover.</small></div>
+      <button className="link" onClick={()=>setSelected(sourceCodes)}>Seleccionar todos</button>
+      <button className="link" onClick={()=>setSelected([])}>Ninguno</button>
+    </div>
+    <div className="tbl-wrap scroll-y" style={{maxHeight:260}}><table>
+      <thead><tr><th></th><th>Código</th><th>Centro</th><th>Agente actual</th><th>Estado</th></tr></thead>
+      <tbody>{sourceCodes.map(code=>{const s=schools.find(x=>x.codigo===code);if(!s)return null;const r=recFor(code);return(
+        <tr key={code}>
+          <td><input type="checkbox" checked={selected.includes(code)} onChange={()=>toggleCode(code)}/></td>
+          <td className="mono">{code}</td><td>{s.nombre}</td><td>{agName(asg[code])}</td>
+          <td><Pill kind={statePill(r?r.estado:"Pendiente")}>{r?r.estado:"Pendiente"}</Pill></td>
+        </tr>);})}
+      {sourceCodes.length===0&&<tr><td colSpan={5}><div className="empty" style={{padding:18}}>No hay centros no contactados con esta selección de origen.</div></td></tr>}
+      </tbody></table></div>
+
+    {selected.length>0 && destinoIds.length>0 && <div className="card card-pad" style={{marginTop:14}}>
+      <div className="section-title" style={{marginTop:0}}>Distribución equitativa</div>
+      <p style={{margin:0,color:"var(--text-dim)"}}>Cada agente destino recibirá <b>{perAgent}</b> centros{resto>0&&<> y los primeros <b>{resto}</b> recibirán uno adicional</>}.</p>
+      <div className="legend" style={{marginTop:10}}>{destinoIds.map((id,i)=><span key={id}><i style={{background:PALETTE[i%PALETTE.length]}}/>{agName(id)}: <b className="mono">{perAgent+(i<resto?1:0)}</b></span>)}</div>
+    </div>}
+  </Modal>);
+}
+
+/* ---- Gestionar centros cerrados por no contacto: reactivar o reasignar, uno a uno o en lote ---- */
+function CerradosModal({ctx,camp,onClose}){
+  const {campaigns,records,setRecords,setCampaigns,schools,users,notify}=ctx;
+  const asg=getAssign(camp);
+  const agName=id=>(users.find(u=>u.id===id)||{}).nombre||"—";
+  const cerrados=camp.schoolCodes.filter(code=>{const r=records.find(rr=>rr.campaignId===camp.id&&rr.codigo===code);return r&&r.estado==="Cerrado por no contacto";});
+  const [selected,setSelected]=useState(cerrados);
+  useEffect(()=>{ setSelected(cerrados); },[JSON.stringify(cerrados)]);
+  const agentesCamp=camp.agentIds.map(id=>users.find(u=>u.id===id)).filter(Boolean);
+  const [destinoAgentes,setDestinoAgentes]=useState(camp.agentIds);
+
+  const reactivarCodes=codes=>setRecords(p=>p.map(r=>(r.campaignId===camp.id&&codes.includes(r.codigo))?{...r,estado:"Pendiente",intentos:0,wrong:[]}:r));
+  const reactivarUno=code=>{ reactivarCodes([code]); notify("Centro reactivado."); };
+  const reactivarSeleccionados=()=>{ if(!selected.length) return; reactivarCodes(selected); notify(`${selected.length} centro(s) reactivado(s).`); };
+
+  const reasignarUno=(code,nuevoAgente)=>{
+    if(!nuevoAgente) return;
+    setCampaigns(p=>p.map(c=>c.id===camp.id?{...c,assign:{...getAssign(c),[code]:nuevoAgente}}:c));
+    setRecords(p=>p.map(r=>(r.campaignId===camp.id&&r.codigo===code)?{...r,agentId:nuevoAgente,estado:"Pendiente",intentos:0,wrong:[]}:r));
+    notify("Centro reasignado y reactivado.");
+  };
+
+  const toggleCode=code=>setSelected(p=>p.includes(code)?p.filter(x=>x!==code):[...p,code]);
+  const toggleAgente=id=>setDestinoAgentes(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);
+  const perAgent=destinoAgentes.length?Math.floor(selected.length/destinoAgentes.length):0;
+  const resto=destinoAgentes.length?selected.length%destinoAgentes.length:0;
+
+  const reasignarSeleccionados=()=>{
+    if(!selected.length) return notify("No hay centros seleccionados.","err");
+    if(!destinoAgentes.length) return notify("Selecciona al menos un agente destino.","err");
+    const nuevoParcial=buildAssign(selected,destinoAgentes);
+    setCampaigns(p=>p.map(c=>c.id===camp.id?{...c,assign:{...getAssign(c),...nuevoParcial}}:c));
+    setRecords(p=>p.map(r=>(r.campaignId===camp.id&&selected.includes(r.codigo))?{...r,agentId:nuevoParcial[r.codigo],estado:"Pendiente",intentos:0,wrong:[]}:r));
+    notify(`${selected.length} centro(s) reasignado(s) y reactivado(s) de forma equitativa.`);
+    onClose();
+  };
+
+  return (<Modal title={`Centros cerrados por no contacto · ${camp.titulo}`} onClose={onClose} wide foot={<button className="btn btn-ghost" onClick={onClose}>Cerrar</button>}>
+    <p style={{color:"var(--text-dim)",marginTop:0}}>Estos centros llegaron al máximo de intentos sin contactar. Puedes <b>reactivarlos</b> (vuelven a la bandeja con el mismo agente) o <b>reasignarlos</b> a otro agente (se reactivan automáticamente al reasignar).</p>
+
+    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+      <div className="grow"><b style={{fontSize:13}}>Centros cerrados: {cerrados.length}</b></div>
+      <button className="link" onClick={()=>setSelected(cerrados)}>Seleccionar todos</button>
+      <button className="link" onClick={()=>setSelected([])}>Ninguno</button>
+    </div>
+
+    <div className="tbl-wrap scroll-y" style={{maxHeight:280}}><table>
+      <thead><tr><th></th><th>Código</th><th>Centro</th><th>Agente actual</th><th>Intentos</th><th></th></tr></thead>
+      <tbody>{cerrados.map(code=>{
+        const s=schools.find(x=>x.codigo===code); if(!s) return null;
+        const r=records.find(rr=>rr.campaignId===camp.id&&rr.codigo===code);
+        return (<tr key={code}>
+          <td><input type="checkbox" checked={selected.includes(code)} onChange={()=>toggleCode(code)}/></td>
+          <td className="mono">{code}</td><td>{s.nombre}</td><td>{agName(asg[code])}</td>
+          <td className="mono">{r?r.intentos:0}</td>
+          <td style={{whiteSpace:"nowrap"}}>
+            <button className="btn btn-ghost btn-sm" onClick={()=>reactivarUno(code)}>Reactivar</button>
+            <select className="input" style={{width:"auto",marginLeft:6,padding:"5px 8px"}} defaultValue="" onChange={e=>{const v=e.target.value;e.target.value="";reasignarUno(code,v);}}>
+              <option value="" disabled>Reasignar a…</option>
+              {agentesCamp.map(a=>{const otras=otrasCampanasActivas(a.id,campaigns,camp.id);return <option key={a.id} value={a.id}>{a.nombre}{otras.length>0?` (📌 ${otras.length===1?otras[0].titulo:otras.length+" bases activas"})`:""}</option>;})}
+            </select>
+          </td>
+        </tr>);
+      })}
+      {cerrados.length===0 && <tr><td colSpan={6}><div className="empty" style={{padding:18}}>No hay centros cerrados por no contacto.</div></td></tr>}
+      </tbody></table></div>
+
+    <div className="divider"/>
+    <button className="btn btn-primary btn-sm" onClick={reactivarSeleccionados} disabled={!selected.length}>Reactivar seleccionados ({selected.length})</button>
+
+    <div className="card card-pad" style={{marginTop:14,background:"var(--surface-2)"}}>
+      <div className="section-title" style={{marginTop:0}}>Reasignar seleccionados hacia…</div>
+      <div className="card" style={{maxHeight:160,overflow:"auto"}}>{agentesCamp.map(a=>{const otras=otrasCampanasActivas(a.id,campaigns,camp.id);return(
+        <label key={a.id} className="checkline" style={{padding:"8px 12px"}}>
+          <input type="checkbox" checked={destinoAgentes.includes(a.id)} onChange={()=>toggleAgente(a.id)}/>
+          <span className="grow">{a.nombre} <span className="tag">{a.turno}</span>
+            {otras.length>0 && <span className="tag" style={{color:"var(--warn)",marginLeft:6}} title={otras.map(c=>c.titulo).join(", ")}>📌 {otras.length===1?otras[0].titulo:`${otras.length} bases activas`}</span>}
+          </span>
+        </label>);})}
+      </div>
+      {selected.length>0 && destinoAgentes.length>0 && <p style={{margin:"10px 0 0",color:"var(--text-dim)",fontSize:13}}>Se repartirán equitativamente: {destinoAgentes.map((id,i)=>`${agName(id)}: ${perAgent+(i<resto?1:0)}`).join(" · ")}</p>}
+      <button className="btn btn-accent btn-sm" style={{marginTop:10}} onClick={reasignarSeleccionados} disabled={!selected.length||!destinoAgentes.length}>Reasignar seleccionados equitativamente</button>
+    </div>
+  </Modal>);
+}
+
+/* ---- Editor de preguntas de campaña: crear, duplicar, reordenar y condicionar (reutilizable en creación y edición) ---- */
+function PreguntasBuilder({preguntas,setPreguntas}){
+  const addQ=()=>setPreguntas(p=>[...p,blankPregunta(p)]);
+  const duplicarQ=i=>setPreguntas(p=>{
+    const copia=JSON.parse(JSON.stringify(p[i]));
+    copia.id=nextId(p,"q");
+    const arr=[...p];arr.splice(i+1,0,copia);return sanitizeConditions(arr);
+  });
+  const updQ=(i,patch)=>setPreguntas(p=>p.map((q,j)=>j===i?{...q,...patch}:q));
+  const setTipoPregunta=(i,nuevoTipo)=>{
+    const q=preguntas[i];const patch={tipo:nuevoTipo};
+    if(nuevoTipo==="sino" && !q.opcionesFinaliza) patch.opcionesFinaliza={Sí:false,No:false};
+    updQ(i,patch);
+  };
+  const delQ=i=>setPreguntas(p=>sanitizeConditions(p.filter((_,j)=>j!==i)));
+  const moveQ=(i,dir)=>setPreguntas(p=>{
+    const j=i+dir; if(j<0||j>=p.length) return p;
+    const arr=[...p]; [arr[i],arr[j]]=[arr[j],arr[i]];
+    return sanitizeConditions(arr);
+  });
+  const addOpcion=i=>updQ(i,{opciones:[...preguntas[i].opciones,blankOpcion()]});
+  const updOpcion=(i,k,patch)=>updQ(i,{opciones:preguntas[i].opciones.map((o,oi)=>oi===k?{...o,...patch}:o)});
+  const addParte=i=>updQ(i,{partes:[...(preguntas[i].partes||[]),blankParte(preguntas[i].partes)]});
+  const duplicarParte=(i,pi)=>setPreguntas(p=>{
+    const partes=p[i].partes;
+    const copia=JSON.parse(JSON.stringify(partes[pi]));
+    copia.id=nextId(partes,"p");
+    const nuevasPartes=[...partes];nuevasPartes.splice(pi+1,0,copia);
+    const arr=p.map((q,j)=>j===i?{...q,partes:nuevasPartes}:q);
+    return sanitizeConditions(arr);
+  });
+  const updParte=(i,pi,patch)=>updQ(i,{partes:preguntas[i].partes.map((p,k)=>k===pi?{...p,...patch}:p)});
+  const setTipoParte=(i,pi,nuevoTipo)=>{
+    const p=preguntas[i].partes[pi];const patch={tipo:nuevoTipo};
+    if(nuevoTipo==="sino" && !p.opcionesFinaliza) patch.opcionesFinaliza={Sí:false,No:false};
+    updParte(i,pi,patch);
+  };
+  const delParte=(i,pi)=>setPreguntas(p=>sanitizeConditions(p.map((q,j)=>j===i?{...q,partes:q.partes.filter((_,k)=>k!==pi)}:q)));
+  const moveParte=(i,pi,dir)=>setPreguntas(p=>{
+    const partes=p[i].partes; const pj=pi+dir; if(pj<0||pj>=partes.length) return p;
+    const nuevasPartes=[...partes]; [nuevasPartes[pi],nuevasPartes[pj]]=[nuevasPartes[pj],nuevasPartes[pi]];
+    const arr=p.map((q,j)=>j===i?{...q,partes:nuevasPartes}:q);
+    return sanitizeConditions(arr);
+  });
+  const updParteOpcion=(i,pi,k,patch)=>updQ(i,{partes:preguntas[i].partes.map((p,j)=>j===pi?{...p,opciones:p.opciones.map((o,oi)=>oi===k?{...o,...patch}:o)}:p)});
+  const addParteOpcion=(i,pi)=>updQ(i,{partes:preguntas[i].partes.map((p,j)=>j===pi?{...p,opciones:[...p.opciones,blankOpcion()]}:p)});
+
+  return (<div>
+    <small className="muted">Define cada pregunta, su tipo de respuesta y sus opciones. Puedes indicar, por opción, un <b>valor a reportar</b> distinto al que ve el agente (para normalizar el dato en reportes y exportaciones). Una pregunta puede mostrarse solo si una pregunta previa (Sí/No, selección múltiple o lista desplegable) tuvo o no tuvo cierta respuesta. Puedes duplicar y reordenar preguntas y sub-preguntas; al reordenar, las condiciones que ya no apunten a algo anterior se limpian automáticamente. Este paso reemplaza cualquier campo fijo: si no agregas preguntas, la llamada se registrará como Contactada sin datos adicionales.</small>
+    <div style={{marginTop:12}}>
+      {preguntas.map((q,i)=>(
+        <div className="qcard" key={q.id}>
+          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+            <span className="tag">{q.id.toUpperCase()}</span>
+            <div className="row" style={{gap:2}}>
+              <button className="btn btn-ghost btn-sm" disabled={i===0} onClick={()=>moveQ(i,-1)} title="Subir">↑</button>
+              <button className="btn btn-ghost btn-sm" disabled={i===preguntas.length-1} onClick={()=>moveQ(i,1)} title="Bajar">↓</button>
+            </div>
+            <input className="input grow" value={q.texto} onChange={e=>updQ(i,{texto:e.target.value})} placeholder="Texto de la pregunta"/>
+            <button className="btn btn-ghost btn-sm" onClick={()=>duplicarQ(i)}>⧉ Duplicar</button>
+            {preguntas.length>1 && <button className="btn btn-danger btn-sm" onClick={()=>delQ(i)}>Eliminar</button>}
+          </div>
+
+          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8,flexWrap:"wrap"}}>
+            <small className="muted">Tipo de respuesta</small>
+            <select className="input" style={{width:"auto"}} value={q.tipo} onChange={e=>setTipoPregunta(i,e.target.value)}>
+              {Q_TIPOS.map(t=><option key={t.k} value={t.k}>{t.t}</option>)}
+            </select>
+          </div>
+
+          {q.tipo==="sino" && <div style={{marginBottom:8}}>
+            <small className="muted" style={{display:"block",marginBottom:6}}>Respuestas fijas: <span className="tag">Sí</span> <span className="tag">No</span></small>
+            <label className="checkline" style={{border:"none",padding:0,gap:6,marginBottom:4}}>
+              <input type="checkbox" checked={!!(q.opcionesFinaliza&&q.opcionesFinaliza["Sí"])} onChange={e=>updQ(i,{opcionesFinaliza:{...(q.opcionesFinaliza||{}),"Sí":e.target.checked}})}/>
+              <small>Finaliza el formulario si responde <b>Sí</b> (no muestra las siguientes preguntas)</small>
+            </label>
+            <label className="checkline" style={{border:"none",padding:0,gap:6}}>
+              <input type="checkbox" checked={!!(q.opcionesFinaliza&&q.opcionesFinaliza["No"])} onChange={e=>updQ(i,{opcionesFinaliza:{...(q.opcionesFinaliza||{}),"No":e.target.checked}})}/>
+              <small>Finaliza el formulario si responde <b>No</b> (no muestra las siguientes preguntas)</small>
+            </label>
+          </div>}
+          {q.tipo==="abierta" && <small className="muted" style={{display:"block"}}>El agente escribirá texto libre.</small>}
+          {q.tipo==="fecha" && <small className="muted" style={{display:"block"}}>El agente seleccionará una fecha.</small>}
+          {q.tipo==="hora" && <small className="muted" style={{display:"block"}}>El agente seleccionará una hora (hh:mm).</small>}
+          {q.tipo==="lista" && <small className="muted" style={{display:"block"}}>Lista desplegable: el agente solo puede seleccionar una opción.</small>}
+
+          {(q.tipo==="multiple"||q.tipo==="lista") && <>
+            <small className="muted">Opciones {q.tipo==="multiple"?"(el agente puede marcar una o varias)":"(el agente elige solo una)"}</small>
+            <div style={{display:"flex",flexDirection:"column",gap:6,margin:"6px 0"}}>
+              {q.opciones.map((op,k)=>(
+                <div key={k} className="row" style={{gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                  <input className="input" style={{width:160}} value={op.texto} placeholder={"Opción "+(k+1)}
+                    onChange={e=>updOpcion(i,k,{texto:e.target.value})}/>
+                  <input className="input" style={{width:160}} value={op.valorReporte} placeholder="Valor a reportar (opcional)"
+                    onChange={e=>updOpcion(i,k,{valorReporte:e.target.value})}/>
+                  <label className="checkline" style={{border:"none",padding:0,gap:5}}>
+                    <input type="checkbox" checked={!!op.finaliza} onChange={e=>updOpcion(i,k,{finaliza:e.target.checked})}/>
+                    <small className="muted">Finaliza el formulario</small>
+                  </label>
+                </div>
+              ))}
+              <button className="btn btn-ghost btn-sm" style={{width:"fit-content"}} onClick={()=>addOpcion(i)}>＋ opción</button>
+            </div>
+          </>}
+
+          {q.tipo==="combinacion" && <div style={{marginTop:4}}>
+            <small className="muted">Sub-respuestas que combina esta pregunta. Puedes condicionar una sub-respuesta según otra anterior de esta misma pregunta, e incluso marcar que finalice todo el formulario.</small>
+            {(q.partes||[]).map((p,pi)=>(
+              <div key={p.id} style={{border:"1px solid var(--border)",borderRadius:8,padding:10,margin:"8px 0",background:"var(--surface)"}}>
+                <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}>
+                  <span className="tag">{p.id}</span>
+                  <div className="row" style={{gap:2}}>
+                    <button className="btn btn-ghost btn-sm" disabled={pi===0} onClick={()=>moveParte(i,pi,-1)} title="Subir">↑</button>
+                    <button className="btn btn-ghost btn-sm" disabled={pi===q.partes.length-1} onClick={()=>moveParte(i,pi,1)} title="Bajar">↓</button>
+                  </div>
+                  <input className="input grow" style={{minWidth:140}} value={p.label} placeholder={"Etiqueta de la parte "+(pi+1)} onChange={e=>updParte(i,pi,{label:e.target.value})}/>
+                  <select className="input" style={{width:"auto"}} value={p.tipo} onChange={e=>setTipoParte(i,pi,e.target.value)}>
+                    {Q_TIPOS_SIMPLES.map(t=><option key={t.k} value={t.k}>{t.t}</option>)}
+                  </select>
+                  <button className="btn btn-ghost btn-sm" onClick={()=>duplicarParte(i,pi)}>⧉ Duplicar</button>
+                  <button className="btn btn-danger btn-sm" onClick={()=>delParte(i,pi)}>✕</button>
+                </div>
+
+                {p.tipo==="sino" && <div style={{marginBottom:8}}>
+                  <small className="muted" style={{display:"block",marginBottom:6}}>Respuestas fijas: <span className="tag">Sí</span> <span className="tag">No</span></small>
+                  <label className="checkline" style={{border:"none",padding:0,gap:6,marginBottom:4}}>
+                    <input type="checkbox" checked={!!(p.opcionesFinaliza&&p.opcionesFinaliza["Sí"])} onChange={e=>updParte(i,pi,{opcionesFinaliza:{...(p.opcionesFinaliza||{}),"Sí":e.target.checked}})}/>
+                    <small>Finaliza el formulario si responde <b>Sí</b></small>
+                  </label>
+                  <label className="checkline" style={{border:"none",padding:0,gap:6}}>
+                    <input type="checkbox" checked={!!(p.opcionesFinaliza&&p.opcionesFinaliza["No"])} onChange={e=>updParte(i,pi,{opcionesFinaliza:{...(p.opcionesFinaliza||{}),"No":e.target.checked}})}/>
+                    <small>Finaliza el formulario si responde <b>No</b></small>
+                  </label>
+                </div>}
+
+                {(p.tipo==="multiple"||p.tipo==="lista") && <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {(p.opciones||[]).map((op,k)=>(
+                    <div key={k} className="row" style={{gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                      <input className="input" style={{width:130}} value={op.texto} placeholder={"Opción "+(k+1)}
+                        onChange={e=>updParteOpcion(i,pi,k,{texto:e.target.value})}/>
+                      <input className="input" style={{width:130}} value={op.valorReporte} placeholder="Valor a reportar"
+                        onChange={e=>updParteOpcion(i,pi,k,{valorReporte:e.target.value})}/>
+                      <label className="checkline" style={{border:"none",padding:0,gap:5}}>
+                        <input type="checkbox" checked={!!op.finaliza} onChange={e=>updParteOpcion(i,pi,k,{finaliza:e.target.checked})}/>
+                        <small className="muted">Finaliza</small>
+                      </label>
+                    </div>))}
+                  <button className="btn btn-ghost btn-sm" style={{width:"fit-content"}} onClick={()=>addParteOpcion(i,pi)}>＋ opción</button>
+                </div>}
+
+                {pi>0 && <div style={{marginTop:10,display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                  <small className="muted">Condición:</small>
+                  <select className="input" style={{width:"auto"}} value={p.cond?p.cond.p:""} onChange={e=>updParte(i,pi,{cond:e.target.value?{p:e.target.value,op:"",mode:"eq"}:null})}>
+                    <option value="">Mostrar siempre</option>
+                    {q.partes.slice(0,pi).filter(sp=>(sp.label||sp.id)&&esCondicionable(sp)).map(sp=><option key={sp.id} value={sp.id}>Según {sp.label||sp.id}</option>)}
+                  </select>
+                  {p.cond && <select className="input" style={{width:"auto"}} value={p.cond.mode||"eq"} onChange={e=>updParte(i,pi,{cond:{...p.cond,mode:e.target.value}})}>
+                    <option value="eq">es igual a</option>
+                    <option value="neq">es diferente de</option>
+                  </select>}
+                  {p.cond && <select className="input" style={{width:"auto"}} value={p.cond.op} onChange={e=>updParte(i,pi,{cond:{...p.cond,op:e.target.value}})}>
+                    <option value="">elige opción</option>
+                    {opcionesDe(q.partes.find(sp=>sp.id===p.cond.p)||{}).map(o=><option key={o}>{o}</option>)}
+                  </select>}
+                </div>}
+              </div>
+            ))}
+            <button className="btn btn-ghost btn-sm" onClick={()=>addParte(i)}>＋ Agregar sub-respuesta</button>
+          </div>}
+
+          {i>0 && <div style={{marginTop:10,display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+            <small className="muted">Condición:</small>
+            <select className="input" style={{width:"auto"}} value={q.cond?q.cond.q:""} onChange={e=>updQ(i,{cond:e.target.value?{q:e.target.value,op:"",mode:"eq"}:null})}>
+              <option value="">Mostrar siempre</option>
+              {preguntas.slice(0,i).filter(p=>p.texto&&esCondicionable(p)).map(p=><option key={p.id} value={p.id}>Según {p.id.toUpperCase()}</option>)}
+            </select>
+            {q.cond && <select className="input" style={{width:"auto"}} value={q.cond.mode||"eq"} onChange={e=>updQ(i,{cond:{...q.cond,mode:e.target.value}})}>
+              <option value="eq">es igual a</option>
+              <option value="neq">es diferente de</option>
+            </select>}
+            {q.cond && <select className="input" style={{width:"auto"}} value={q.cond.op} onChange={e=>updQ(i,{cond:{...q.cond,op:e.target.value}})}>
+              <option value="">elige opción</option>
+              {opcionesDe(preguntas.find(p=>p.id===q.cond.q)||{}).map(o=><option key={o}>{o}</option>)}
+            </select>}
+          </div>}
+        </div>
+      ))}
+      <button className="btn btn-ghost btn-sm" onClick={addQ}>＋ Agregar pregunta</button>
+    </div>
+  </div>);
+}
+
+/* ---- Editar las preguntas de una campaña ya creada (Admin/Supervisor/Team leader) ---- */
+function EditQuestionsModal({ctx,camp,onClose}){
+  const {setCampaigns,notify}=ctx;
+  const [preguntas,setPreguntas]=useState(()=>{
+    const base=camp.preguntas&&camp.preguntas.length?camp.preguntas:[blankPregunta([])];
+    return JSON.parse(JSON.stringify(base));
+  });
+  const guardar=()=>{
+    const limpio=preguntas.filter(q=>q.texto).map(limpiaPregunta);
+    setCampaigns(p=>p.map(c=>c.id===camp.id?{...c,preguntas:limpio}:c));
+    notify("Preguntas de la campaña actualizadas.");
+    onClose();
+  };
+  return (<Modal title={`Editar preguntas · ${camp.titulo}`} onClose={onClose} wide foot={<><button className="btn btn-ghost" onClick={onClose}>Cancelar</button><button className="btn btn-accent" onClick={guardar}>Guardar cambios</button></>}>
+    <div className="alert alert-info" style={{marginTop:0}}>Los cambios se aplican a partir de ahora. Las actividades ya registradas conservan las respuestas dadas con la configuración anterior.</div>
+    <PreguntasBuilder preguntas={preguntas} setPreguntas={setPreguntas}/>
+  </Modal>);
+}
+
+/* ---- Asistente de creación de campaña ---- */
+function CampaignWizard({ctx,onClose}){
+  const {schools,setSchools,users,campaigns,setCampaigns,filtro,notify}=ctx;
+  const [step,setStep]=useState(0);
+  const steps=["Datos","Preguntas","Centros escolares","Agentes","Resumen"];
+  const [titulo,setTitulo]=useState("");
+  const [objetivo,setObjetivo]=useState("Registrar las actividades programadas para el período.");
+  const [fDesde,setFDesde]=useState(filtro.desde);
+  const [fHasta,setFHasta]=useState(filtro.hasta);
+  const [maxIntentos,setMaxIntentos]=useState(DEFAULT_MAX_INTENTOS);
+  const modoFecha=fDesde===fHasta?"dia":"periodo";
+  const setModoFecha=m=>{ if(m==="dia") setFHasta(fDesde); else if(fHasta===fDesde) setFHasta(addDays(fDesde,6)); };
+  // preguntas de la campaña (100% parametrizables; reemplazan cualquier esquema fijo de "actividad")
+  const [preguntas,setPreguntas]=useState([blankPregunta([])]);
+  const [selMode,setSelMode]=useState("todos");
+  const [manual,setManual]=useState([]);
+  const [grupo,setGrupo]=useState({tipo:"departamento",valor:DEPTOS[0]});
+  const [uploaded,setUploaded]=useState([]);const [upInfo,setUpInfo]=useState(null);
+  // solo agentes Outbound, activos y disponibles (Inbound y SDP no reciben llamadas de campaña)
+  const pool=users.filter(u=>u.rol==="Agente"&&u.estado==="activo"&&u.skill!=="Inbound"&&u.skill!=="SDP"&&u.disponible!==false);
+  const [turno,setTurno]=useState("Todos");
+  const [agSel,setAgSel]=useState(pool.map(a=>a.id));
+
+  const selectedSchools=useMemo(()=>{
+    if(selMode==="archivo")return uploaded;
+    if(selMode==="todos")return schools;
+    if(selMode==="manual")return schools.filter(s=>manual.includes(s.codigo));
+    const {tipo,valor}=grupo;
+    return schools.filter(s=>{if(tipo==="departamento")return s.departamento===valor;if(tipo==="municipio")return s.municipio===valor;if(tipo==="distrito")return s.distrito===valor;if(tipo==="programa")return s.programa==="Despega";if(tipo==="modernizacion")return s.modernizacion;if(tipo==="fase")return String(s.fase)===String(valor);if(tipo==="control")return s.control;return false;});
+  },[selMode,manual,grupo,schools,uploaded]);
+  const agAvail=pool.filter(a=>turno==="Todos"||a.turno===turno);
+  const finalAgents=agAvail.filter(a=>agSel.includes(a.id));
+  const grupoOptions={departamento:DEPTOS,municipio:[...new Set(schools.map(s=>s.municipio))],distrito:[...new Set(schools.map(s=>s.distrito))],fase:["1","2","3"],programa:[],modernizacion:[],control:[]};
+
+  const onFile=file=>{if(!file)return;setUpInfo({nombre:file.name,cargando:true});parseSchoolFile(file,(err,res)=>{if(err){setUploaded([]);setUpInfo({nombre:file.name,error:err.message});return;}const vistos={},lista=[];res.validos.forEach(s=>{if(!vistos[s.codigo]){vistos[s.codigo]=1;lista.push(s);}});setUploaded(lista);setUpInfo({nombre:file.name,cargados:lista.length,omitidos:res.omitidos,hoja:res.hoja});});};
+
+  const launch=()=>{
+    const codes=selectedSchools.map(s=>s.codigo);const agentIds=finalAgents.map(a=>a.id);
+    if(selMode==="archivo"&&uploaded.length){setSchools(prev=>{const map={};prev.forEach(s=>map[s.codigo]=s);uploaded.forEach(s=>map[s.codigo]={...map[s.codigo],...s});return Object.values(map);});}
+    const camp={id:uid("c"),titulo:titulo||"Campaña sin título",objetivo,fechaDesde:fDesde,fechaHasta:fHasta,maxIntentos:Number(maxIntentos)||DEFAULT_MAX_INTENTOS,fecha:new Date().toISOString(),
+      preguntas:preguntas.filter(q=>q.texto).map(limpiaPregunta),
+      schoolCodes:codes,agentIds,assign:buildAssign(codes,agentIds),estado:"En curso"};
+    setCampaigns(p=>[...p,camp]); // NO finaliza otras: varias en paralelo
+    notify(`Campaña creada · ${codes.length} centros entre ${agentIds.length} agentes`);onClose();
+  };
+  const perAgent=finalAgents.length?Math.floor(selectedSchools.length/finalAgents.length):0;
+  const resto=finalAgents.length?selectedSchools.length%finalAgents.length:0;
+  const foot=<>
+    {step>0&&<button className="btn btn-ghost" onClick={()=>setStep(step-1)}>Atrás</button>}
+    {step<steps.length-1?<button className="btn btn-primary" onClick={()=>setStep(step+1)}>Siguiente</button>
+      :<button className="btn btn-accent" onClick={launch} disabled={!finalAgents.length||!selectedSchools.length||!titulo.trim()}>Crear campaña</button>}
+  </>;
+  return (<Modal title="Nueva campaña" onClose={onClose} wide foot={foot}>
+    <div className="stepper">{steps.map((s,i)=><div key={s} className={"step"+(i===step?" on":i<step?" done":"")}><b>{i<step?"✓":i+1}</b>{s}</div>)}</div>
+
+    {step===0 && <div>
+      <div className="field"><label>Título de la campaña</label><input className="input" value={titulo} onChange={e=>setTitulo(e.target.value)} placeholder="Ej. Actividades semanales de CE"/></div>
+      <div className="field">
+        <label>Fecha de trabajo</label>
+        <div className="seg" style={{marginBottom:8}}>
+          <button className={modoFecha==="dia"?"on":""} onClick={()=>setModoFecha("dia")}>Un día</button>
+          <button className={modoFecha==="periodo"?"on":""} onClick={()=>setModoFecha("periodo")}>Período</button>
+        </div>
+        {modoFecha==="dia"
+          ? <input className="input" type="date" style={{width:"auto"}} value={fDesde} onChange={e=>{setFDesde(e.target.value);setFHasta(e.target.value);}}/>
+          : <div className="row" style={{gap:10}}>
+              <div><small className="muted">Desde</small><input className="input" type="date" value={fDesde} max={fHasta} onChange={e=>setFDesde(e.target.value)}/></div>
+              <div><small className="muted">Hasta</small><input className="input" type="date" value={fHasta} min={fDesde} onChange={e=>setFHasta(e.target.value)}/></div>
+            </div>}
+        <small className="muted" style={{display:"block",marginTop:6}}>Toda la información registrada quedará asociada a {modoFecha==="dia"?"esta fecha":"este período"}.</small>
+      </div>
+      <div className="field"><label>Cantidad máxima de intentos antes de cerrar por no contacto</label>
+        <input className="input" type="number" min={1} max={10} style={{width:100}} value={maxIntentos} onChange={e=>setMaxIntentos(e.target.value)}/>
+        <small className="muted" style={{display:"block",marginTop:6}}>Al llegar a este número de intentos sin contactar, el centro se cierra automáticamente y desaparece de la bandeja.</small></div>
+      <div className="field"><label>Objetivo</label><textarea className="input" rows={2} value={objetivo} onChange={e=>setObjetivo(e.target.value)}/></div>
+    </div>}
+
+    {step===1 && <PreguntasBuilder preguntas={preguntas} setPreguntas={setPreguntas}/>}
+
+    {step===2 && <div>
+      <div className="seg" style={{marginBottom:14,flexWrap:"wrap"}}>{[["todos","Todos"],["manual","Selección manual"],["grupo","Por grupo"],["archivo","Cargar archivo"]].map(([k,t])=><button key={k} className={selMode===k?"on":""} onClick={()=>setSelMode(k)}>{t}</button>)}</div>
+      {selMode!=="archivo"&&<small className="muted">Origen: catálogo de centros educativos (base institucional).</small>}
+      {selMode==="grupo"&&<div className="row" style={{gap:10,margin:"12px 0"}}>
+        <select className="input" style={{width:"auto"}} value={grupo.tipo} onChange={e=>setGrupo({tipo:e.target.value,valor:(grupoOptions[e.target.value]||[])[0]||""})}>
+          <option value="departamento">Departamento</option><option value="municipio">Municipio</option><option value="distrito">Distrito</option><option value="programa">Programa Despega</option><option value="modernizacion">Modernización</option><option value="fase">Fase</option><option value="control">Centros control</option></select>
+        {(grupoOptions[grupo.tipo]||[]).length>0&&<select className="input" style={{width:"auto"}} value={grupo.valor} onChange={e=>setGrupo(g=>({...g,valor:e.target.value}))}>{grupoOptions[grupo.tipo].map(v=><option key={v}>{v}</option>)}</select>}
+      </div>}
+      {selMode==="archivo"&&<div style={{margin:"12px 0"}}>
+        <div style={{border:"1.5px dashed var(--border-strong)",borderRadius:12,padding:18,background:"var(--surface-2)",textAlign:"center"}}>
+          <div style={{fontSize:26,opacity:.6}}>📄</div><p style={{margin:"6px 0 12px",color:"var(--text-dim)"}}>Carga un archivo <b>CSV</b> o <b>Excel</b> con los centros educativos.</p>
+          <label className="btn btn-primary btn-sm" style={{display:"inline-flex",cursor:"pointer"}}>Seleccionar archivo<input type="file" accept=".csv,.xlsx,.xls" style={{display:"none"}} onChange={e=>onFile(e.target.files[0])}/></label>
+          <button className="btn btn-ghost btn-sm" style={{marginLeft:8}} onClick={downloadTemplate}>⬇ Descargar plantilla</button>
+        </div>
+        <small className="muted" style={{display:"block",marginTop:8}}>Columnas reconocidas: Código, Nombre, Departamento, Municipio, Distrito, Teléfono(s), Programa, Modernización, Fase, Centro Control.</small>
+        {upInfo&&(upInfo.error?<div className="alert alert-err" style={{marginTop:10}}>No se pudo procesar «{upInfo.nombre}»: {upInfo.error}</div>:upInfo.cargando?<div className="alert alert-info" style={{marginTop:10}}>Procesando…</div>:<div className="alert alert-ok" style={{marginTop:10}}>«{upInfo.nombre}»: <b>{upInfo.cargados}</b> centros cargados{upInfo.omitidos>0&&<> · {upInfo.omitidos} omitidos</>}.</div>)}
+      </div>}
+      <div className="tag" style={{margin:"6px 0 10px",display:"inline-block"}}>{selectedSchools.length} centros seleccionados</div>
+      <div className="tbl-wrap scroll-y"><table><thead><tr>{selMode==="manual"&&<th></th>}<th>Código</th><th>Centro</th><th>Depto.</th><th>Teléfonos</th></tr></thead>
+        <tbody>{(selMode==="archivo"?uploaded:schools).map(s=>{const inG=selectedSchools.some(x=>x.codigo===s.codigo);if(selMode==="grupo"&&!inG)return null;return(<tr key={s.codigo}>
+          {selMode==="manual"&&<td><input type="checkbox" checked={manual.includes(s.codigo)} onChange={()=>setManual(m=>m.includes(s.codigo)?m.filter(x=>x!==s.codigo):[...m,s.codigo])}/></td>}
+          <td className="mono">{s.codigo}</td><td>{s.nombre}</td><td>{s.departamento}</td><td className="mono" style={{fontSize:12}}>{(s.telefonos||[]).join(" · ")}</td></tr>);})}
+        </tbody></table>{selMode==="archivo"&&uploaded.length===0&&<div className="empty" style={{padding:24}}>Aún no has cargado un archivo.</div>}</div>
+    </div>}
+
+    {step===3 && <div>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12,flexWrap:"wrap"}}>
+        <small className="muted">Solo agentes con skill <b>Outbound</b>, activos y disponibles. Filtrar por turno:</small>
+        <div className="seg">{["Todos","AM","PM"].map(t=><button key={t} className={turno===t?"on":""} onClick={()=>setTurno(t)}>{t}</button>)}</div>
+      </div>
+      <small className="muted">Todos van seleccionados por defecto. Des-selecciona a quienes estén de día libre.</small>
+      <div className="card" style={{marginTop:10}}>{agAvail.map(a=>{
+        const otrasCamps=campaigns.filter(c=>c.estado==="En curso"&&c.agentIds.includes(a.id));
+        return (
+        <label key={a.id} className="checkline" style={{padding:"10px 14px"}}>
+          <input type="checkbox" checked={agSel.includes(a.id)} onChange={()=>setAgSel(s=>s.includes(a.id)?s.filter(x=>x!==a.id):[...s,a.id])}/>
+          <div className="avatar" style={{background:"var(--surface-3)",color:"var(--text)"}}>{a.nombre.split(" ").map(x=>x[0]).slice(0,2).join("")}</div>
+          <div className="grow"><b>{a.nombre}</b> <span className="tag">Turno {a.turno}</span> <span className="badge badge-out">Outbound</span>
+            {otrasCamps.length>0 && <span className="tag" style={{color:"var(--warn)"}} title={otrasCamps.map(c=>c.titulo).join(", ")}>📌 {otrasCamps.length===1?otrasCamps[0].titulo:`${otrasCamps.length} campañas activas`}</span>}
+          </div>
+          <Pill kind={opPill(a.opStatus)}>{a.opStatus}</Pill></label>);})}
+        {agAvail.length===0&&<div className="empty" style={{padding:20}}>No hay agentes Outbound disponibles en este turno.</div>}</div>
+    </div>}
+
+    {step===4 && <div>
+      <div className="row" style={{gap:14}}>
+        <div className="card card-pad grow"><div className="stat"><span className="k">Centros</span><span className="v">{selectedSchools.length}</span></div></div>
+        <div className="card card-pad grow"><div className="stat"><span className="k">Agentes</span><span className="v">{finalAgents.length}</span></div></div>
+        <div className="card card-pad grow"><div className="stat"><span className="k">Preguntas</span><span className="v">{preguntas.filter(q=>q.texto).length}</span></div></div>
+        <div className="card card-pad grow"><div className="stat"><span className="k">Fecha</span><span className="v" style={{fontSize:16}}>{rangeLabel(fDesde,fHasta)}</span></div></div>
+      </div>
+      <div className="card card-pad" style={{marginTop:14}}>
+        <div className="section-title" style={{marginTop:0}}>Asignación equitativa</div>
+        <p style={{margin:0,color:"var(--text-dim)"}}>Cada agente recibirá <b>{perAgent}</b> centros{resto>0&&<> y los primeros <b>{resto}</b> recibirán uno adicional</>}.</p>
+        <div className="legend" style={{marginTop:12}}>{finalAgents.map((a,i)=><span key={a.id}><i style={{background:PALETTE[i%PALETTE.length]}}/>{a.nombre}: <b className="mono">{perAgent+(i<resto?1:0)}</b></span>)}</div>
+      </div>
+      <div className="alert alert-info" style={{marginTop:14}}>«{titulo||"Campaña sin título"}» quedará <b>En curso</b> junto a las demás campañas activas (puedes gestionar varias en paralelo). Se cerrará por no contacto automáticamente tras {maxIntentos} intentos.</div>
+    </div>}
+  </Modal>);
+}
+
+/* ============================ CONSULTA Y EDICIÓN (INBOUND) ============================ */
+function Consulta({ctx}){
+  const {schools,filtro}=ctx;
+  const [q,setQ]=useState("");
+  const [sel,setSel]=useState(null);
+  const res=useMemo(()=>{const t=_norm(q);if(!t)return schools.slice(0,8);return schools.filter(s=>_norm(s.nombre).includes(t)||_norm(s.codigo).includes(t)||_norm(s.departamento).includes(t)||_norm(s.municipio).includes(t)).slice(0,30);},[q,schools]);
+  return (<div className="grid" style={{gridTemplateColumns:"360px 1fr",alignItems:"start"}}>
+    <div className="grid">
+      <div className="searchbar"><span>🔎</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Nombre, código, departamento o municipio"/></div>
+      <div className="card"><div className="toggle-list">
+        {res.map(s=>(<button key={s.codigo} className="row-item" style={{textAlign:"left",background:sel===s.codigo?"var(--surface-2)":"none"}} onClick={()=>setSel(s.codigo)}>
+          <div className="grow"><b style={{fontSize:13.5}}>{s.nombre}</b><div className="mini mono">{s.codigo} · {s.municipio}, {s.departamento}</div></div><span style={{color:"var(--text-faint)"}}>›</span></button>))}
+        {res.length===0&&<div className="empty" style={{padding:24}}>Sin coincidencias.</div>}
+      </div></div>
+    </div>
+    {sel?<InboundCE ctx={ctx} codigo={sel}/>:<div className="card card-pad"><div className="empty" style={{padding:"40px 10px"}}><div className="big">🔎</div>Busca y selecciona un Centro Educativo para consultar o editar sus actividades de {rangeLabel(filtro.desde,filtro.hasta)}.</div></div>}
+  </div>);
+}
+function InboundCE({ctx,codigo}){
+  const {schools,campaigns,records,setRecords,filtro,session,notify}=ctx;
+  const can=CAN[session.rol];
+  const s=schools.find(x=>x.codigo===codigo);
+  const campsRango=campaigns.filter(c=>overlaps(c.fechaDesde,c.fechaHasta,filtro.desde,filtro.hasta));
+  const recs=records.filter(r=>r.codigo===codigo && campsRango.some(c=>c.id===r.campaignId));
+  // campaña destino para agregar (si no hay registro): primera campaña del rango que incluya el CE
+  const campDestino=campsRango.find(c=>c.schoolCodes.includes(codigo));
+  const [edit,setEdit]=useState(null); // {recId, idx}
+  const [editAns,setEditAns]=useState({});
+  const [adding,setAdding]=useState(false);
+  const [nuevaAns,setNuevaAns]=useState({});
+
+  const bloqueadoPorSDP=session.skill==="SDP";
+  const puedeEditar=r=>!bloqueadoPorSDP && (can.editarTodo || (can.editar && r.agentId===session.id));
+  const puedeAgregar=can.editar && !bloqueadoPorSDP;
+  const guardarAct=(recId,idx)=>{
+    setRecords(p=>p.map(r=>{if(r.id!==recId)return r;const arr=[...(r.actividades||[])];if(idx!=null)arr[idx]=editAns;else arr.push(editAns);return {...r,actividades:arr,estado:"Contactado",updatedMs:Date.now()};}));
+    setEdit(null);setEditAns({});notify(idx!=null?"Actividad actualizada.":"Actividad agregada.");
+  };
+  const eliminarAct=(recId,idx)=>{setRecords(p=>p.map(r=>r.id===recId?{...r,actividades:r.actividades.filter((_,i)=>i!==idx),updatedMs:Date.now()}:r));notify("Actividad eliminada.");};
+  const crearRegistro=()=>{
+    if(!campDestino)return notify("Este centro no pertenece a ninguna campaña del rango seleccionado.","err");
+    const nr={id:uid("rec"),campaignId:campDestino.id,codigo,agentId:(getAssign(campDestino)[codigo])||session.id,estado:"Contactado",intentos:0,actividades:[nuevaAns],wrong:[],dur:0,updatedMs:Date.now()};
+    setRecords(p=>[...p,nr]);setAdding(false);setNuevaAns({});notify("Registro creado con la actividad.");
+  };
+
+  return (<div className="grid">
+    <div className="card card-pad">
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}>
+        <div><h4 style={{margin:0}}>{s.nombre}</h4><div className="mini mono">{s.codigo} · {s.municipio}, {s.departamento} · Tel: {s.telefonos.join(" · ")}</div></div>
+        <span className="tag">📅 {rangeLabel(filtro.desde,filtro.hasta)}</span>
+      </div>
+    </div>
+
+    {recs.length===0 && <div className="card card-pad">
+      <div className="empty" style={{padding:20}}>No hay actividades registradas para este rango de fechas.</div>
+      {puedeAgregar && campDestino && (adding
+        ? <div className="card card-pad" style={{background:"var(--surface-2)",marginTop:10}}>
+            <PreguntasEditor preguntas={campDestino.preguntas||[]} ans={nuevaAns} setAns={setNuevaAns}/>
+            <div style={{display:"flex",gap:8,marginTop:6}}>
+              <button className="btn btn-primary btn-sm" onClick={crearRegistro}>Guardar actividad</button>
+              <button className="btn btn-ghost btn-sm" onClick={()=>{setAdding(false);setNuevaAns({});}}>Cancelar</button>
+            </div>
+          </div>
+        : <div style={{textAlign:"center"}}><button className="btn btn-accent btn-sm" onClick={()=>setAdding(true)}>＋ Registrar actividad (inbound)</button></div>)}
+      {can.editar && !campDestino && <div className="banner banner-warn">Este centro no pertenece a ninguna campaña del rango seleccionado, por lo que no puede registrarse aún.</div>}
+      {bloqueadoPorSDP && <div className="banner banner-warn">Tu skill es SDP: no puedes registrar ni editar actividades en campañas.</div>}
+    </div>}
+
+    {recs.map(r=>{const camp=campaigns.find(c=>c.id===r.campaignId);const editable=puedeEditar(r);const preguntas=camp?camp.preguntas||[]:[];return(
+      <div key={r.id} className="card card-pad">
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,flexWrap:"wrap"}}>
+          <Pill kind={statePill(r.estado)}>{r.estado}</Pill>
+          <span className="tag">{camp?camp.titulo:"—"}</span>
+          <span className="mini">{r.actividades?r.actividades.length:0} actividad(es)</span>
+          {!editable && <span className="tag" style={{marginLeft:"auto"}}>Solo lectura</span>}
+        </div>
+        {(r.actividades||[]).map((a,i)=>(edit&&edit.recId===r.id&&edit.idx===i
+          ? <div key={i} className="card card-pad" style={{background:"var(--surface-2)",marginBottom:10}}>
+              <PreguntasEditor preguntas={preguntas} ans={editAns} setAns={setEditAns}/>
+              <div style={{display:"flex",gap:8,marginTop:6}}>
+                <button className="btn btn-primary btn-sm" onClick={()=>guardarAct(r.id,i)}>Guardar cambios</button>
+                <button className="btn btn-ghost btn-sm" onClick={()=>{setEdit(null);setEditAns({});}}>Cancelar</button>
+              </div>
+            </div>
+          : <div key={i} className="act-card">
+              <div style={{display:"flex",alignItems:"flex-start",gap:8}}>
+                <div className="grow"><ActividadResumen preguntas={preguntas} act={a}/></div>
+                {editable&&<span style={{display:"flex",gap:8,flex:"none"}}>
+                  <button className="link" onClick={()=>{setEdit({recId:r.id,idx:i});setEditAns(a);}}>Editar</button>
+                  {can.eliminar&&<button className="link" style={{color:"var(--danger)"}} onClick={()=>eliminarAct(r.id,i)}>Eliminar</button>}</span>}
+              </div>
+            </div>))}
+        {editable && (adding===r.id
+          ? <div className="card card-pad" style={{background:"var(--surface-2)"}}>
+              <PreguntasEditor preguntas={preguntas} ans={editAns} setAns={setEditAns}/>
+              <div style={{display:"flex",gap:8,marginTop:6}}>
+                <button className="btn btn-primary btn-sm" onClick={()=>guardarAct(r.id,null)}>Guardar actividad</button>
+                <button className="btn btn-ghost btn-sm" onClick={()=>{setAdding(false);setEditAns({});}}>Cancelar</button>
+              </div>
+            </div>
+          : <button className="btn btn-ghost btn-sm" style={{marginTop:6}} onClick={()=>{setAdding(r.id);setEditAns({});setEdit(null);}}>＋ Agregar actividad</button>)}
+      </div>);})}
+  </div>);
+}
+
+/* ============================ EQUIPO DE AGENTES ============================ */
+function Equipo({ctx}){
+  const {users,patchUser,session,pausa,setPausa,dailyLog,limites,setLimites,auxHabilitados,auxUltimoCambio,toggleAuxiliar,campaigns,setCampaigns,notify}=ctx;
+  const can=CAN[session.rol];
+  const esAdmin=session.rol==="Administrador";
+  const now=useNow();
+  const agentes=users.filter(u=>u.rol==="Agente"&&u.estado==="activo");
+  const upd=(id,patch)=>patchUser(id,patch);
+
+  const totalActivos=agentes.length;
+  const disponibles=agentes.filter(a=>(a.opStatus||"Activo")==="Activo" && a.disponible!==false).length;
+  const enLlamada=0; // este prototipo no mantiene un estado "en llamada" persistente por agente
+  const dursSemana=[];
+  // duración promedio: registros con llamada gestionada en cualquier campaña (dur>0)
+  ctx.records&&ctx.records.forEach(r=>{ if(r.dur>0) dursSemana.push(r.dur); });
+  const avgDur=dursSemana.length?Math.round(dursSemana.reduce((a,b)=>a+b,0)/dursSemana.length):0;
+  const byOp=k=>agentes.filter(a=>(a.opStatus||"Activo")===k).length;
+
+  // columnas de auxiliares con su clave de campo diario, para aplicar color por límite en cada una
+  const AUX_COLS=[["Baño","banoSec"],["Break","breakSec"],["Comida","comidaSec"],["Capacitación","capacitacionSec"],["Personal","personalSec"],["Retroalimentación","retroalimentacionSec"]];
+
+  // campañas en curso, para el control de pausa individual
+  const campEnCurso=campaigns.filter(c=>c.estado==="En curso");
+  const [campPausaSel,setCampPausaSel]=useState(campEnCurso[0]?campEnCurso[0].id:"");
+  useEffect(()=>{ if(!campEnCurso.some(c=>c.id===campPausaSel)) setCampPausaSel(campEnCurso[0]?campEnCurso[0].id:""); },[campaigns.length]);
+  const campSel=campaigns.find(c=>c.id===campPausaSel);
+  const toggleCampPausa=()=>{
+    setCampaigns(p=>p.map(c=>c.id===campPausaSel?{...c,pausada:!c.pausada}:c));
+    notify(campSel&&!campSel.pausada?`Llamadas pausadas para «${campSel.titulo}»`:`Llamadas reanudadas para «${campSel?campSel.titulo:""}»`);
+  };
+
+  return (<div className="grid">
+    <div className="grid" style={{gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))"}}>
+      <Stat k="Agentes disponibles" v={disponibles} meta={`de ${totalActivos} activos`} c="var(--success)"/>
+      <Stat k="En llamada" v={enLlamada} meta="en tiempo real" c="var(--info)"/>
+      <Stat k="Duración promedio" v={fmt(avgDur)} meta="por llamada" c="var(--navy-2)"/>
+      <Stat k="En baño" v={byOp("Baño")} c="var(--info)"/>
+      <Stat k="En break" v={byOp("Break")} c="var(--warn)"/>
+      <Stat k="En comida" v={byOp("Comida")} c="var(--violet)"/>
+      <Stat k="En capacitación" v={byOp("Capacitación")} c="var(--accent-ink)"/>
+      <Stat k="En personal" v={byOp("Personal")} c="var(--neutral)"/>
+      <Stat k="En retroalimentación" v={byOp("Retroalimentación")} c="var(--teal)"/>
+    </div>
+
+    <div className="card card-pad">
+      <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+        <div className="grow"><div className="section-title" style={{margin:0}}>Auxiliares habilitados</div><small className="muted">Un auxiliar deshabilitado deja de poder seleccionarse para nuevas pausas. {can.auxiliares?"Puedes habilitarlos/deshabilitarlos.":"Solo Administrador, Team Leader o Supervisor pueden modificar esto."}</small></div>
+      </div>
+      <div className="row" style={{gap:20,marginTop:10,flexWrap:"wrap"}}>
+        {AUXILIARES.map(k=>(
+          <div key={k} style={{display:"flex",alignItems:"center",gap:8}}>
+            <Switch on={auxHabilitados[k]!==false} disabled={!can.auxiliares} onClick={()=>toggleAuxiliar(k)}/>
+            <span style={{fontSize:13}}>{k}</span>
+          </div>
+        ))}
+      </div>
+      {auxUltimoCambio && <small className="muted" style={{display:"block",marginTop:10}}>Último cambio por <b>{auxUltimoCambio.por}</b> · {new Date(auxUltimoCambio.cuando).toLocaleString("es-SV")}</small>}
+    </div>
+
+    <div className="card card-pad">
+      <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+        <div className="grow"><div className="section-title" style={{margin:0}}>Límites de tiempo por auxiliar</div><small className="muted">Tiempo acumulado por día: en amarillo al 80%, en rojo al excederlo. {esAdmin?"Puedes editarlo (minutos).":"Solo el Administrador puede modificar estos valores."}</small></div>
+      </div>
+      <div className="row" style={{gap:16,marginTop:10,flexWrap:"wrap"}}>
+        {AUXILIARES.map(k=>(
+          <div key={k} className="field" style={{margin:0}}>
+            <label>{k}</label>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <input className="input" type="number" min={1} max={480} style={{width:90}} disabled={!esAdmin}
+                value={Math.round((limites[k]||0)/60)}
+                onChange={e=>setLimites(p=>({...p,[k]:Math.max(1,Number(e.target.value)||1)*60}))}/>
+              <small className="muted">min</small>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <div className="card card-pad">
+      <div className="section-title" style={{marginTop:0}}>Agentes en pausa · tiempo acumulado hoy</div>
+      <div className="tbl-wrap scroll-y"><table>
+        <thead><tr><th>Agente</th><th>Estado actual</th><th>En curso</th><th>Sesión (login)</th><th>Baño</th><th>Break</th><th>Comida</th><th>Capacitación</th><th>Personal</th><th>Retroalim.</th></tr></thead>
+        <tbody>{[...agentes].sort((a,b)=>{
+          const rank=u=>{
+            const cur=u.opStatus||"Activo";
+            if(cur==="Activo") return 0;
+            const acumulado=liveTotal(dailyLog,u,STATUS_FIELD[cur],now);
+            const nivel=nivelTiempo(acumulado,limites[cur]);
+            return nivel==="danger"?2:nivel==="warn"?1:0;
+          };
+          return rank(b)-rank(a);
+        }).map(a=>{
+          const cur=a.opStatus||"Activo";
+          const enPausaAhora=cur!=="Activo";
+          const acumuladoCur=enPausaAhora?liveTotal(dailyLog,a,STATUS_FIELD[cur],now):0;
+          const nivelCur=enPausaAhora?nivelTiempo(acumuladoCur,limites[cur]):null;
+          return (
+            <tr key={a.id} style={enPausaAhora?{background:"var(--surface-2)"}:null}>
+              <td><b>{a.nombre}</b> <span className="tag">{a.turno}</span></td>
+              <td><Pill kind={opPill(cur)}>{cur}</Pill></td>
+              <td className="mono" style={estiloNivel(nivelCur)}>{enPausaAhora?fmtLong(acumuladoCur):"—"}</td>
+              <td className="mono">{fmtLong(liveTotal(dailyLog,a,"loginSec",now))}</td>
+              {AUX_COLS.map(([label,field])=>{
+                const total=liveTotal(dailyLog,a,field,now);
+                const nivel=nivelTiempo(total,limites[label]);
+                return <td key={field} className="mono" style={estiloNivel(nivel)}>{fmtLong(total)}</td>;
+              })}
+            </tr>);
+        })}
+        </tbody></table></div>
+      <small className="muted" style={{display:"block",marginTop:8}}>El tiempo de cada auxiliar es acumulativo durante el día: si el agente lo detiene y lo retoma más tarde, continúa donde quedó. El tiempo de sesión avanza mientras el agente está logeado y se detiene automáticamente al cerrar sesión. Los agentes en amarillo (80% del límite) o rojo (límite excedido) aparecen primero. Esta tabla muestra el acumulado de hoy; para otras fechas usa el reporte por período más abajo.</small>
+    </div>
+
+    <ReportePeriodo ctx={ctx} agentes={agentes}/>
+
+    <div className="card card-pad">
+      <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+        <div className="grow"><div className="section-title" style={{margin:0}}>Control de llamadas · todas las campañas</div><small className="muted">Pausar impide iniciar nuevas llamadas en cualquier campaña; las que estén en curso pueden finalizarse.</small></div>
+        <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontWeight:600,fontSize:13}}>{pausa?"Nuevas llamadas en pausa":"Nuevas llamadas activas"}</span><Switch on={pausa} disabled={!can.pausar} onClick={()=>{setPausa(!pausa);notify(pausa?"Llamadas reanudadas para todas las campañas":"Nuevas llamadas en pausa para todas las campañas");}}/></div>
+      </div>
+    </div>
+    <div className="card card-pad">
+      <div className="section-title" style={{marginTop:0}}>Control de llamadas · campaña específica</div>
+      {campEnCurso.length===0 ? <div className="empty" style={{padding:14}}>No hay campañas en curso.</div> : <>
+        <div className="row" style={{gap:12,alignItems:"center",flexWrap:"wrap"}}>
+          <select className="input" style={{width:"auto"}} value={campPausaSel} onChange={e=>setCampPausaSel(e.target.value)}>
+            {campEnCurso.map(c=><option key={c.id} value={c.id}>{c.titulo}</option>)}
+          </select>
+          <span style={{fontWeight:600,fontSize:13}}>{campSel&&campSel.pausada?"Pausada":"Activa"}</span>
+          <Switch on={!!(campSel&&campSel.pausada)} disabled={!can.pausar} onClick={toggleCampPausa}/>
+        </div>
+        <small className="muted" style={{display:"block",marginTop:8}}>Pausar una campaña específica no afecta a las demás campañas en curso.</small>
+      </>}
+    </div>
+    <div className="card card-pad">
+      <div className="section-title" style={{marginTop:0}}>Agentes · skill, turno, disponibilidad y habilitaciones</div>
+      <div className="tbl-wrap"><table>
+        <thead><tr><th>Agente</th><th>Skill</th><th>Turno</th><th>Disponible</th><th>Fuera de turno</th><th>Llamadas</th><th>Estatus</th></tr></thead>
+        <tbody>{agentes.map(a=>{const enPausaAcc=fmtLong(liveTotal(dailyLog,a,"banoSec",now)+liveTotal(dailyLog,a,"breakSec",now)+liveTotal(dailyLog,a,"comidaSec",now)+liveTotal(dailyLog,a,"capacitacionSec",now)+liveTotal(dailyLog,a,"personalSec",now)+liveTotal(dailyLog,a,"retroalimentacionSec",now));return(
+          <tr key={a.id}>
+            <td><b>{a.nombre}</b><div className="mini">pausas hoy: {enPausaAcc}</div></td>
+            <td><div className="seg">{["Outbound","Inbound","SDP"].map(sk=><button key={sk} className={(a.skill||"Outbound")===sk?"on":""} disabled={!can.equipo} onClick={()=>upd(a.id,{skill:sk})}>{sk}</button>)}</div></td>
+            <td><div className="seg">{["AM","PM"].map(t=><button key={t} className={a.turno===t?"on":""} disabled={!can.equipo} onClick={()=>upd(a.id,{turno:t})}>{t}</button>)}</div></td>
+            <td><Switch on={a.disponible!==false} disabled={!can.equipo} onClick={()=>upd(a.id,{disponible:a.disponible===false})}/></td>
+            <td><Switch on={!!a.habilitadoFueraTurno} disabled={!can.equipo} onClick={()=>upd(a.id,{habilitadoFueraTurno:!a.habilitadoFueraTurno})}/></td>
+            <td><Switch on={a.habilitadoLlamadas!==false} disabled={!can.equipo} onClick={()=>upd(a.id,{habilitadoLlamadas:a.habilitadoLlamadas===false})}/></td>
+            <td><Pill kind={opPill(a.opStatus)}>{a.opStatus||"Activo"}</Pill></td>
+          </tr>);})}
+        </tbody></table></div>
+      <small className="muted" style={{display:"block",marginTop:8}}>Los agentes Outbound pueden llamar por defecto (turno actual: <b>{shiftNow()}</b>). Un agente fuera de su turno debe habilitarse aquí. Marcar «No disponible» lo excluye de llamadas y de nuevas asignaciones. El skill <b>SDP</b> no recibe llamadas de campaña ni puede registrar actividades.</small>
+    </div>
+  </div>);
+}
+
+/* ---- Reporte de tiempos por período (login, baño, break, comida) con exportación a Excel ---- */
+function ReportePeriodo({ctx,agentes}){
+  const {dailyLog,users}=ctx;
+  const now=useNow();
+  const hoy=dayKey();
+  const [desde,setDesde]=useState(addDays(hoy,-6));
+  const [hasta,setHasta]=useState(hoy);
+  const campos=DAILY_FIELDS; // loginSec + los 6 auxiliares
+
+  const fechas=useMemo(()=>{ if(desde>hasta) return []; return datesBetween(desde,hasta); },[desde,hasta]);
+
+  // filas: agente x fecha, con el valor "en vivo" cuando la fecha es hoy
+  const filas=useMemo(()=>{
+    const out=[];
+    agentes.forEach(a=>{
+      fechas.forEach(f=>{
+        const e=getDailyEntry(dailyLog,a.id,f);
+        const esHoy=f===hoy;
+        const row={agentId:a.id,nombre:a.nombre,fecha:f,primerLoginMs:e.primerLoginMs||null,ultimoLogoutMs:e.ultimoLogoutMs||null};
+        campos.forEach(c=>{ row[c]= esHoy? liveTotal(dailyLog,a,c,now) : (e[c]||0); });
+        out.push(row);
+      });
+    });
+    return out;
+  },[agentes,fechas,dailyLog,hoy,now]);
+
+  const totalesPorAgente=useMemo(()=>{
+    const m={};
+    filas.forEach(r=>{ const t=(m[r.agentId]=m[r.agentId]||{nombre:r.nombre,...Object.fromEntries(campos.map(c=>[c,0]))});
+      campos.forEach(c=>t[c]+=r[c]); });
+    return Object.values(m);
+  },[filas]);
+
+  const granTotal=totalesPorAgente.reduce((acc,t)=>{const o={...acc};campos.forEach(c=>o[c]=(acc[c]||0)+t[c]);return o;},Object.fromEntries(campos.map(c=>[c,0])));
+
+  const exportarExcel=()=>{
+    if(typeof XLSX==="undefined") return;
+    const headers=["Agente","Fecha","Primer login","Último logout",...campos.map(c=>FIELD_LABEL[c]+" (HH:MM:SS)")];
+    const rows=[headers];
+    filas.forEach(r=>rows.push([r.nombre,r.fecha,fmtHora(r.primerLoginMs),fmtHora(r.ultimoLogoutMs),...campos.map(c=>fmtLong(r[c]))]));
+    rows.push([]);
+    rows.push(["Totales por agente"]);
+    rows.push(["Agente","","","",...campos.map(c=>FIELD_LABEL[c]+" (HH:MM:SS)")]);
+    totalesPorAgente.forEach(t=>rows.push([t.nombre,"","","",...campos.map(c=>fmtLong(t[c]))]));
+    rows.push([]);
+    rows.push(["Total general","","","",...campos.map(c=>fmtLong(granTotal[c]))]);
+    const ws=XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"]=[{wch:22},{wch:12},{wch:12},{wch:12},...campos.map(()=>({wch:16}))];
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,"Tiempos");
+    XLSX.writeFile(wb,`tiempos_agentes_${desde}_a_${hasta}.xlsx`);
+  };
+
+  return (<div className="card card-pad">
+    <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+      <div className="grow"><div className="section-title" style={{margin:0}}>Reporte de tiempos por período</div><small className="muted">Primer login, último logout y todos los auxiliares por agente y por día, con total al final.</small></div>
+      <div className="row" style={{gap:8,alignItems:"center"}}>
+        <label className="mini">Desde<br/><input className="input" type="date" value={desde} max={hasta} onChange={e=>setDesde(e.target.value)}/></label>
+        <label className="mini">Hasta<br/><input className="input" type="date" value={hasta} min={desde} max={hoy} onChange={e=>setHasta(e.target.value)}/></label>
+        <button className="btn btn-accent btn-sm" onClick={exportarExcel} disabled={filas.length===0} style={{marginTop:16}}>⬇ Descargar Excel</button>
+      </div>
+    </div>
+
+    {fechas.length===0 ? <div className="empty" style={{padding:20}}>El rango de fechas no es válido.</div> :
+    <div className="tbl-wrap scroll-y" style={{maxHeight:420,marginTop:12}}>
+      <table>
+        <thead><tr><th>Agente</th><th>Fecha</th><th>Primer login</th><th>Último logout</th>{campos.map(c=><th key={c}>{FIELD_LABEL[c]}</th>)}</tr></thead>
+        <tbody>
+          {agentes.map(a=>{
+            const rowsAgente=filas.filter(r=>r.agentId===a.id);
+            const t=totalesPorAgente.find(x=>x.nombre===a.nombre)||Object.fromEntries(campos.map(c=>[c,0]));
+            return (<React.Fragment key={a.id}>
+              {rowsAgente.map((r,i)=>(
+                <tr key={r.fecha}>
+                  {i===0 && <td rowSpan={rowsAgente.length+1}><b>{a.nombre}</b> <span className="tag">{a.turno}</span></td>}
+                  <td className="mono">{r.fecha}{r.fecha===hoy&&<span className="tag" style={{marginLeft:6}}>hoy</span>}</td>
+                  <td className="mono">{fmtHora(r.primerLoginMs)}</td>
+                  <td className="mono">{fmtHora(r.ultimoLogoutMs)}</td>
+                  {campos.map(c=><td key={c} className="mono">{fmtLong(r[c])}</td>)}
+                </tr>
+              ))}
+              <tr style={{background:"var(--surface-2)",fontWeight:700}}>
+                <td className="mono">Total {a.nombre.split(" ")[0]}</td>
+                <td className="mono">—</td>
+                <td className="mono">—</td>
+                {campos.map(c=><td key={c} className="mono">{fmtLong(t[c])}</td>)}
+              </tr>
+            </React.Fragment>);
+          })}
+          <tr style={{background:"var(--surface-3)",fontWeight:700}}>
+            <td colSpan={4}>Total general</td>
+            {campos.map(c=><td key={c} className="mono">{fmtLong(granTotal[c])}</td>)}
+          </tr>
+        </tbody>
+      </table>
+    </div>}
+    <small className="muted" style={{display:"block",marginTop:8}}>El día de hoy se actualiza en vivo. Los días anteriores muestran el tiempo ya cerrado. En este prototipo el historial vive en memoria del navegador.</small>
+  </div>);
+}
+
+/* ============================ DASHBOARD DE AVANCE ============================ */
+function Dashboard({ctx}){
+  const {campaigns,records,users,filtro}=ctx;
+  const camps=campaigns.filter(c=>overlaps(c.fechaDesde,c.fechaHasta,filtro.desde,filtro.hasta));
+  const [campId,setCampId]=useState("all");
+  useEffect(()=>{ if(campId!=="all" && !camps.some(c=>c.id===campId)) setCampId("all"); },[filtro.desde,filtro.hasta,campaigns.length]);
+
+  if(camps.length===0) return <div className="card card-pad"><div className="empty"><div className="big">📊</div>No hay campañas para {rangeLabel(filtro.desde,filtro.hasta)}.<br/>Crea una campaña para ver su avance.</div></div>;
+
+  const scope = campId==="all" ? camps : camps.filter(c=>c.id===campId);
+  const items=[];
+  scope.forEach(c=>{const asg=getAssign(c);c.schoolCodes.forEach(code=>{const rec=records.find(r=>r.campaignId===c.id&&r.codigo===code);items.push({agentId:asg[code],estado:rec?rec.estado:"Pendiente"});});});
+  const asignadas=items.length;
+  const completadas=items.filter(x=>x.estado==="Contactado").length;
+  const cerradas=items.filter(x=>x.estado==="Cerrado por no contacto").length;
+  const pendientes=Math.max(0,asignadas-completadas-cerradas);
+  const enAvance=items.filter(x=>x.estado!=="Pendiente").length; // Contactado, No contestó, Número equivocado, Llamar nuevamente o Cerrado por no contacto
+  const pct=asignadas?Math.round(enAvance/asignadas*100):0; // % de avance = todo lo gestionado, no solo lo contactado con éxito
+  const pctCompletadas=asignadas?Math.round(completadas/asignadas*100):0;
+
+  const byAgent={};
+  items.forEach(x=>{const id=x.agentId||"—";(byAgent[id]=byAgent[id]||{asig:0,comp:0,avance:0});byAgent[id].asig++;if(x.estado==="Contactado")byAgent[id].comp++;if(x.estado!=="Pendiente")byAgent[id].avance++;});
+  const agentName=id=>(users.find(u=>u.id===id)||{}).nombre||"Sin asignar";
+  const agentRows=Object.entries(byAgent).map(([id,v])=>({id,nombre:agentName(id),asig:v.asig,comp:v.comp,avance:v.avance,pct:v.asig?Math.round(v.avance/v.asig*100):0})).sort((a,b)=>b.pct-a.pct);
+
+  const noContestoTotal=scope.reduce((acc,c)=>acc+records.filter(r=>r.campaignId===c.id&&r.estado==="No contestó").length,0);
+
+  return (<div className="grid">
+    <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+      <div className="grow"><div className="section-title" style={{margin:0}}>Avance de campañas</div><small className="muted">{rangeLabel(filtro.desde,filtro.hasta)}</small></div>
+      <select className="input" style={{width:"auto"}} value={campId} onChange={e=>setCampId(e.target.value)}>
+        <option value="all">Todas las campañas del rango ({camps.length})</option>
+        {camps.map(c=><option key={c.id} value={c.id}>{c.titulo}</option>)}
+      </select>
+    </div>
+
+    <div className="grid" style={{gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))"}}>
+      <Stat k="Escuelas asignadas" v={asignadas} c="var(--navy-2)"/>
+      <Stat k="En avance" v={enAvance} c="var(--info)" meta={pct+"% del total"}/>
+      <Stat k="Completadas" v={completadas} c="var(--success)" meta={pctCompletadas+"% del total"}/>
+      <Stat k="Pendientes" v={pendientes} c="var(--warn)"/>
+      <Stat k="No contestó" v={noContestoTotal} c="var(--danger)"/>
+      <Stat k="Cerradas sin contacto" v={cerradas} c="var(--neutral)"/>
+    </div>
+
+    <div className="card card-pad">
+      <div className="section-title" style={{marginTop:0}}>Avance general</div>
+      <Donut segments={[{label:"Completadas",value:completadas,color:"#0f9d58"},{label:"Pendientes",value:pendientes,color:"#f2a900"},{label:"Cerradas",value:cerradas,color:"#d9342b"}]}/>
+      <div className="bar-track" style={{marginTop:16}}><div className="bar-fill" style={{width:pct+"%",background:"var(--success)"}}/></div>
+      <small className="muted" style={{display:"block",marginTop:6}}>{pct}% de avance (Contactado, No contestó, Número equivocado, Llamar nuevamente o Cerrado por no contacto) en {scope.length} campaña(s).</small>
+    </div>
+
+    <div className="card card-pad">
+      <div className="section-title" style={{marginTop:0}}>Porcentaje de avance por agente</div>
+      {agentRows.length===0?<div className="empty">Sin agentes en el alcance.</div>:
+      <div className="tbl-wrap"><table>
+        <thead><tr><th>Agente</th><th>Asignadas</th><th>En avance</th><th>Completadas</th><th>Avance</th></tr></thead>
+        <tbody>{agentRows.map(a=>(
+          <tr key={a.id}>
+            <td><b>{a.nombre}</b></td>
+            <td className="mono">{a.asig}</td>
+            <td className="mono">{a.avance}</td>
+            <td className="mono">{a.comp}</td>
+            <td style={{minWidth:170}}><div style={{display:"flex",alignItems:"center",gap:8}}>
+              <div className="bar-track grow"><div className="bar-fill" style={{width:a.pct+"%",background:a.pct>=100?"var(--success)":"var(--navy-2)"}}/></div>
+              <b className="mono" style={{width:40,textAlign:"right"}}>{a.pct}%</b></div></td>
+          </tr>))}
+        </tbody></table></div>}
+    </div>
+
+    {scope.length===1 && scope[0].preguntas && scope[0].preguntas.length>0 && <div className="card card-pad">
+      <div className="section-title" style={{marginTop:0}}>Respuestas por pregunta · {scope[0].titulo}</div>
+      {(()=>{ const acts=records.filter(r=>r.campaignId===scope[0].id).flatMap(r=>r.actividades||[]); return scope[0].preguntas.map(q=>(
+        <div key={q.id} style={{marginBottom:16}}>
+          <div style={{fontWeight:600,fontSize:13,marginBottom:8}}>{q.texto} <span className="tag">{qTipoLabel(q.tipo)}</span></div>
+          {q.tipo==="combinacion"
+            ? (q.partes||[]).map((p)=>(
+                <div key={p.id} style={{marginBottom:10}}>
+                  <small className="muted" style={{display:"block",marginBottom:4}}>{p.label||p.id}</small>
+                  <Bars rows={contarActividades(acts,q,p.id)}/>
+                </div>))
+            : <Bars rows={contarActividades(acts,q)}/>}
+        </div>
+      )); })()}
+    </div>}
+  </div>);
+}
+
+/* ============================ ADMINISTRACIÓN DE USUARIOS ============================ */
+function Administracion({ctx}){
+  const {users,patchUser,session,notify}=ctx;
+  const can=CAN[session.rol];
+  const [crear,setCrear]=useState(false);
+  const pend=users.filter(u=>u.estado==="pendiente");
+  const resto=users.filter(u=>u.estado!=="pendiente");
+  const approve=u=>{patchUser(u.id,{estado:"activo",...(u.rol==="Agente"?{skill:u.skill||"Outbound",turno:u.turno||CURRENT_SHIFT,disponible:u.disponible!==false,habilitadoFueraTurno:!!u.habilitadoFueraTurno,habilitadoLlamadas:u.habilitadoLlamadas!==false,opStatus:u.opStatus||"Activo",statusSince:null,loginSince:null}:{})});notify("Usuario aprobado");};
+  const reject=u=>{patchUser(u.id,{estado:"inactivo"});notify("Solicitud rechazada","info");};
+  const setRol=(u,rol)=>patchUser(u.id,{rol});
+  const baja=u=>{patchUser(u.id,{estado:"inactivo"});notify("Usuario dado de baja","info");};
+  const reactivar=u=>{patchUser(u.id,{estado:"activo"});notify("Usuario reactivado");};
+
+  return (<div className="grid">
+    <div style={{display:"flex",justifyContent:"flex-end"}}>
+      {can.crearUsuario && <button className="btn btn-primary btn-sm" onClick={()=>setCrear(true)}>＋ Crear usuario</button>}
+    </div>
+    <div className="card card-pad">
+      <div className="section-title" style={{marginTop:0}}>Solicitudes de acceso pendientes ({pend.length})</div>
+      {pend.length===0?<div className="empty" style={{padding:18}}>No hay solicitudes por aprobar.</div>:
+      <div className="tbl-wrap"><table>
+        <thead><tr><th>Nombre</th><th>Correo</th><th>Rol solicitado</th><th></th></tr></thead>
+        <tbody>{pend.map(u=>(
+          <tr key={u.id}><td><b>{u.nombre}</b></td><td className="mono">{u.email}</td><td><Pill kind="p-warn">{u.rol}</Pill></td>
+          <td style={{whiteSpace:"nowrap"}}>
+            <button className="btn btn-accent btn-sm" onClick={()=>approve(u)}>Aprobar</button>
+            <button className="btn btn-ghost btn-sm" style={{marginLeft:6}} onClick={()=>reject(u)}>Rechazar</button>
+          </td></tr>))}
+        </tbody></table></div>}
+    </div>
+
+    <div className="card card-pad">
+      <div className="section-title" style={{marginTop:0}}>Usuarios del sistema ({resto.length})</div>
+      <div className="tbl-wrap"><table>
+        <thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
+        <tbody>{resto.map(u=>{const yo=u.id===session.id;return(
+          <tr key={u.id}>
+            <td><b>{u.nombre}</b>{yo&&<span className="tag" style={{marginLeft:6}}>tú</span>}</td>
+            <td className="mono">{u.email}</td>
+            <td><select className="input" style={{width:"auto"}} value={u.rol} disabled={yo} onChange={e=>setRol(u,e.target.value)}>{ROLES.map(r=><option key={r}>{r}</option>)}</select></td>
+            <td><Pill kind={u.estado==="activo"?"p-success":"p-neutral"}>{u.estado}</Pill></td>
+            <td style={{whiteSpace:"nowrap"}}>{u.estado==="activo"
+              ? <button className="btn btn-ghost btn-sm" disabled={yo} style={{color:yo?null:"var(--danger)"}} onClick={()=>baja(u)}>Dar de baja</button>
+              : <button className="btn btn-ghost btn-sm" onClick={()=>reactivar(u)}>Reactivar</button>}</td>
+          </tr>);})}
+        </tbody></table></div>
+    </div>
+    {crear && <CrearUsuarioModal ctx={ctx} onClose={()=>setCrear(false)}/>}
+  </div>);
+}
+
+/* ---- Crear usuario directamente (Administrador) ---- */
+function CrearUsuarioModal({ctx,onClose}){
+  const {users,setUsers,notify}=ctx;
+  const [nombre,setNombre]=useState("");
+  const [email,setEmail]=useState("");
+  const [pass,setPass]=useState("");
+  const [rol,setRol]=useState("Agente");
+  const [err,setErr]=useState(null);
+  const [loading,setLoading]=useState(false);
+  const crear=async()=>{
+    if(!nombre.trim()||!email.trim()||!pass.trim()) return setErr("Completa todos los campos.");
+    if(!passwordValida(pass)) return setErr("La contraseña temporal no cumple los requisitos mínimos (ver la lista debajo del campo).");
+    if(users.some(u=>u.email.toLowerCase()===email.trim().toLowerCase())) return setErr("Ya existe un usuario con ese correo.");
+    if(!supabase) return setErr("Falta configurar la conexión a Supabase.");
+    setLoading(true);setErr(null);
+    const {data:{session:sesionActual}}=await supabase.auth.getSession();
+    try{
+      const res=await fetch(EDGE_FUNCTION_CREAR_USUARIO,{
+        method:"POST",
+        headers:{"Content-Type":"application/json",Authorization:`Bearer ${sesionActual.access_token}`},
+        body:JSON.stringify({nombre:nombre.trim(),email:email.trim(),password:pass,rol}),
+      });
+      const out=await res.json();
+      setLoading(false);
+      if(!res.ok||out.error) return setErr(out.error||"No se pudo crear el usuario.");
+      const nuevos=await fetchProfiles();
+      setUsers(nuevos);
+      notify(`Usuario creado: ${nombre.trim()} (${rol})`);onClose();
+    }catch(e){
+      setLoading(false);
+      setErr("No se pudo contactar la función de creación de usuarios. ¿Ya la desplegaste en Supabase?");
+    }
+  };
+  return (<Modal title="Crear usuario" onClose={onClose} foot={<><button className="btn btn-ghost" onClick={onClose}>Cancelar</button><button className="btn btn-accent" disabled={loading} onClick={crear}>{loading?"Creando…":"Crear usuario"}</button></>}>
+    <div className="field"><label>Nombre completo</label><input className="input" value={nombre} onChange={e=>setNombre(e.target.value)}/></div>
+    <div className="field"><label>Correo institucional</label><input className="input" value={email} onChange={e=>setEmail(e.target.value)} placeholder="usuario@goes.gob.sv"/></div>
+    <div className="field"><label>Contraseña temporal</label><input className="input" type="password" value={pass} onChange={e=>setPass(e.target.value)}/>
+      <PasswordChecklist value={pass}/>
+    </div>
+    <div className="field"><label>Rol</label><select className="input" value={rol} onChange={e=>setRol(e.target.value)}>{ROLES.map(r=><option key={r}>{r}</option>)}</select></div>
+    <small className="muted">El usuario queda activo de inmediato, sin pasar por aprobación. Deberá cambiar esta contraseña temporal al iniciar sesión por primera vez.</small>
+    {err&&<div className="alert alert-err" style={{marginTop:10}}>{err}</div>}
+  </Modal>);
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+
+</script>
+</body>
+</html>
