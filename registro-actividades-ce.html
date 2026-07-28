@@ -467,7 +467,7 @@ function PasswordChecklist({value}){
    En producción vendrían de Google Sheets / un backend. NO se pre-establece
    ninguna campaña: se crean desde el módulo de Campañas.                    */
 
-const DEPTOS = ["Ahuachapán","Santa Ana","Sonsonate","Chalatenango","La Libertad","San Salvador","Cuscatlán","La Paz","Cabañas","San Vicente","Usulután","San Miguel","Morazán","La Unión"];
+const DEPTOS = ["Ahuachapán","Cabañas","Chalatenango","Cuscatlán","La Libertad","La Paz","La Unión","Morazán","San Miguel","San Salvador","San Vicente","Santa Ana","Sonsonate","Usulután"];
 
 function seedSchools(){
   const data=[
@@ -2065,7 +2065,8 @@ function CampaignWizard({ctx,onClose}){
   },[selMode,manual,grupo,schools,uploaded]);
   const agAvail=pool.filter(a=>turno==="Todos"||a.turno===turno);
   const finalAgents=agAvail.filter(a=>agSel.includes(a.id));
-  const grupoOptions={departamento:DEPTOS,municipio:[...new Set(schools.map(s=>s.municipio))],distrito:[...new Set(schools.map(s=>s.distrito))],fase:["1","2","3"],programa:[],modernizacion:[],control:[]};
+  const ordenEs=(a,b)=>a.localeCompare(b,"es",{sensitivity:"base"});
+  const grupoOptions={departamento:DEPTOS,municipio:[...new Set(schools.map(s=>s.municipio))].sort(ordenEs),distrito:[...new Set(schools.map(s=>s.distrito))].sort(ordenEs),fase:["1","2","3"],programa:[],modernizacion:[],control:[]};
 
   const onFile=file=>{if(!file)return;setUpInfo({nombre:file.name,cargando:true});parseSchoolFile(file,(err,res)=>{if(err){setUploaded([]);setUpInfo({nombre:file.name,error:err.message});return;}const vistos={},lista=[];res.validos.forEach(s=>{if(!vistos[s.codigo]){vistos[s.codigo]=1;lista.push(s);}});setUploaded(lista);setUpInfo({nombre:file.name,cargados:lista.length,omitidos:res.omitidos,hoja:res.hoja});});};
 
