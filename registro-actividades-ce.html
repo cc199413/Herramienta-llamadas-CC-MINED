@@ -284,8 +284,7 @@ function dbProfileToUser(p){
   };
 }
 async function fetchProfiles(){
-  const {data,error}=await supabase.from("profiles").select("*").order("nombre");
-  if(error){ console.error("Error leyendo perfiles:",error.message); return []; }
+  const data=await fetchTodasLasFilas("profiles",{col:"nombre"});
   return data.map(dbProfileToUser);
 }
 /* aplica un patch (camelCase, como usa la app) como UPDATE real sobre profiles */
@@ -328,8 +327,7 @@ async function registrarUltimoLogoutDB(agentId,fecha,ms){
   else await supabase.from("tiempos_diarios").update({ultimo_logout:new Date(ms).toISOString()}).eq("id",data.id);
 }
 async function fetchTiemposDiarios(){
-  const {data,error}=await supabase.from("tiempos_diarios").select("*");
-  if(error){ console.error("Error leyendo tiempos_diarios:",error.message); return []; }
+  const data=await fetchTodasLasFilas("tiempos_diarios");
   return data.map(r=>({
     agentId:r.agente_id, date:r.fecha,
     loginSec:Number(r.login_seg)||0, banoSec:Number(r.bano_seg)||0, breakSec:Number(r.break_seg)||0,
@@ -340,10 +338,24 @@ async function fetchTiemposDiarios(){
   }));
 }
 /* ---- centros escolares (ya sincronizados desde Google Sheets) ---- */
+/* Supabase limita a 1000 filas por consulta por defecto; este helper pagina
+   automáticamente hasta traer TODAS las filas de una tabla. */
+async function fetchTodasLasFilas(tabla,ordenar){
+  const LOTE=1000; let todas=[],desde=0;
+  while(true){
+    let q=supabase.from(tabla).select("*");
+    if(ordenar) q=q.order(ordenar.col,{ascending:ordenar.asc!==false});
+    const {data,error}=await q.range(desde,desde+LOTE-1);
+    if(error){ console.error(`Error leyendo ${tabla}:`,error.message); break; }
+    todas=todas.concat(data||[]);
+    if(!data||data.length<LOTE) break;
+    desde+=LOTE;
+  }
+  return todas;
+}
 async function fetchCentrosEscolares(){
-  const {data,error}=await supabase.from("centros_escolares").select("*").order("nombre");
-  if(error){ console.error("Error leyendo centros_escolares:",error.message); return []; }
-  return data.map(c=>({
+  const todos=await fetchTodasLasFilas("centros_escolares",{col:"nombre"});
+  return todos.map(c=>({
     codigo:c.codigo, nombre:c.nombre, departamento:c.departamento||"", municipio:c.municipio||"",
     distrito:c.distrito||"", telefonos:c.telefonos&&c.telefonos.length?c.telefonos:[""],
     programa:c.programa, modernizacion:!!c.modernizacion, fase:c.fase, control:!!c.control,
@@ -362,12 +374,11 @@ function dbRegistroToRecord(r){
   };
 }
 async function fetchCampaignsAndRecords(){
-  const [{data:camps,error:e1},{data:agentesRows,error:e2},{data:regs,error:e3}]=await Promise.all([
-    supabase.from("campanas").select("*").order("creado_en",{ascending:false}),
-    supabase.from("campana_agentes").select("*"),
-    supabase.from("registros").select("*"),
+  const [camps,agentesRows,regs]=await Promise.all([
+    fetchTodasLasFilas("campanas",{col:"creado_en",asc:false}),
+    fetchTodasLasFilas("campana_agentes"),
+    fetchTodasLasFilas("registros"),
   ]);
-  if(e1||e2||e3){ console.error("Error leyendo campañas/registros:",(e1||e2||e3).message); return {campaigns:[],records:[]}; }
   const campaigns=(camps||[]).map(c=>{
     const agentIds=(agentesRows||[]).filter(a=>a.campana_id===c.id).map(a=>a.agente_id);
     const misRegs=(regs||[]).filter(r=>r.campana_id===c.id);
@@ -456,7 +467,7 @@ function PasswordChecklist({value}){
    En producción vendrían de Google Sheets / un backend. NO se pre-establece
    ninguna campaña: se crean desde el módulo de Campañas.                    */
 
-const DEPTOS = ["San Salvador","La Libertad","Santa Ana","San Miguel","Sonsonate","Usulután","La Paz","Cuscatlán","Chalatenango","Morazán"];
+const DEPTOS = ["Ahuachapán","Santa Ana","Sonsonate","Chalatenango","La Libertad","San Salvador","Cuscatlán","La Paz","Cabañas","San Vicente","Usulután","San Miguel","Morazán","La Unión"];
 
 function seedSchools(){
   const data=[
