@@ -340,6 +340,22 @@ async function fetchTiemposDiarios(){
 /* ---- centros escolares (ya sincronizados desde Google Sheets) ---- */
 /* Supabase limita a 1000 filas por consulta por defecto; este helper pagina
    automáticamente hasta traer TODAS las filas de una tabla. */
+/* ---- configuración global: límites de tiempo por auxiliar, y cuáles están habilitados ---- */
+async function fetchConfiguracion(){
+  const filas=await fetchTodasLasFilas("configuracion");
+  const limitesFila=filas.find(f=>f.clave==="limites_auxiliares");
+  const auxFila=filas.find(f=>f.clave==="auxiliares_habilitados");
+  return {
+    limites: (limitesFila&&limitesFila.valor)||{},
+    auxHabilitados: (auxFila&&auxFila.valor)||{},
+    auxUltimoCambio: auxFila&&auxFila.actualizado_por ? {porId:auxFila.actualizado_por,cuando:new Date(auxFila.actualizado_en).getTime()} : null,
+  };
+}
+async function updateConfiguracion(clave,valor,userId){
+  const {error}=await supabase.from("configuracion").update({valor,actualizado_por:userId,actualizado_en:new Date().toISOString()}).eq("clave",clave);
+  if(error) console.error(`Error actualizando configuración (${clave}):`,error.message);
+}
+
 async function fetchTodasLasFilas(tabla,ordenar){
   const LOTE=1000; let todas=[],desde=0;
   while(true){
@@ -917,12 +933,15 @@ const App=()=>{
 
   // cargar todo lo que depende de la sesión (perfiles, centros, tiempos) una vez que hay alguien autenticado
   const cargarDatosDeSesion=async(perfilPropio)=>{
-    const [perfiles,centros,tiempos,campReg]=await Promise.all([fetchProfiles(),fetchCentrosEscolares(),fetchTiemposDiarios(),fetchCampaignsAndRecords()]);
+    const [perfiles,centros,tiempos,campReg,config]=await Promise.all([fetchProfiles(),fetchCentrosEscolares(),fetchTiemposDiarios(),fetchCampaignsAndRecords(),fetchConfiguracion()]);
     setUsers(perfiles.length?perfiles:[perfilPropio]);
     setSchools(centros);
     setDailyLog(tiempos);
     setCampaigns(campReg.campaigns);
     setRecords(campReg.records);
+    if(Object.keys(config.limites).length) setLimites(config.limites);
+    if(Object.keys(config.auxHabilitados).length) setAuxHabilitados(config.auxHabilitados);
+    if(config.auxUltimoCambio) setAuxUltimoCambio(config.auxUltimoCambio);
   };
 
   // al montar: ¿ya había una sesión activa (el navegador la recuerda)?
@@ -957,8 +976,11 @@ const App=()=>{
     if(supabase) bumpTiempoDiario(agentId,date,field,deltaSec);
   };
   const toggleAuxiliar=k=>{
-    setAuxHabilitados(p=>({...p,[k]:p[k]===false}));
-    setAuxUltimoCambio({por:session?session.nombre:"—",cuando:Date.now()});
+    const nuevo={...auxHabilitados,[k]:auxHabilitados[k]===false};
+    setAuxHabilitados(nuevo);
+    const cambio={porId:session?session.id:null,cuando:Date.now()};
+    setAuxUltimoCambio(cambio);
+    if(supabase) updateConfiguracion("auxiliares_habilitados",nuevo,session?session.id:null);
   };
 
   const ctx={theme,setTheme,users,setUsers,patchUser,schools,setSchools,campaigns,setCampaigns,records,setRecords,session,setSession,view,setView,filtro,setFiltro,pausa,setPausa,notify,dailyLog,setDailyLog,bumpDaily,limites,setLimites,auxHabilitados,setAuxHabilitados,auxUltimoCambio,toggleAuxiliar,recoveryUserId,setRecoveryUserId,cargarDatosDeSesion};
@@ -2365,7 +2387,7 @@ function Equipo({ctx}){
           </div>
         ))}
       </div>
-      {auxUltimoCambio && <small className="muted" style={{display:"block",marginTop:10}}>Último cambio por <b>{auxUltimoCambio.por}</b> · {new Date(auxUltimoCambio.cuando).toLocaleString("es-SV")}</small>}
+      {auxUltimoCambio && <small className="muted" style={{display:"block",marginTop:10}}>Último cambio por <b>{(users.find(u=>u.id===auxUltimoCambio.porId)||{}).nombre||"—"}</b> · {new Date(auxUltimoCambio.cuando).toLocaleString("es-SV")}</small>}
     </div>
 
     <div className="card card-pad">
@@ -2379,7 +2401,11 @@ function Equipo({ctx}){
             <div style={{display:"flex",alignItems:"center",gap:6}}>
               <input className="input" type="number" min={1} max={480} style={{width:90}} disabled={!esAdmin}
                 value={Math.round((limites[k]||0)/60)}
-                onChange={e=>setLimites(p=>({...p,[k]:Math.max(1,Number(e.target.value)||1)*60}))}/>
+                onChange={e=>{
+                  const nuevo={...limites,[k]:Math.max(1,Number(e.target.value)||1)*60};
+                  setLimites(nuevo);
+                  if(supabase) updateConfiguracion("limites_auxiliares",nuevo,session.id);
+                }}/>
               <small className="muted">min</small>
             </div>
           </div>
