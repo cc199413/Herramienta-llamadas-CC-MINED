@@ -359,6 +359,46 @@ async function updateConfiguracion(clave,valor,userId){
   if(error) console.error(`Error actualizando configuración (${clave}):`,error.message);
 }
 
+/* ---- bitácora de acciones (para la pantalla de Logs del Administrador) ---- */
+async function registrarAccion(usuarioId,accion,detalle){
+  if(!supabase||!usuarioId) return;
+  const {error}=await supabase.from("bitacora").insert({usuario_id:usuarioId,accion,detalle:detalle||null});
+  if(error) console.error("Error registrando en bitácora:",error.message);
+}
+async function fetchBitacora(){
+  const filas=await fetchTodasLasFilas("bitacora",{col:"creado_en",asc:false});
+  return filas.map(f=>({id:f.id,usuarioId:f.usuario_id,accion:f.accion,detalle:f.detalle,cuando:new Date(f.creado_en).getTime()}));
+}
+const ACCION_LABEL={
+  login:"Inicio de sesión",logout:"Cierre de sesión",solicitar_acceso:"Solicitud de acceso",
+  aprobar_usuario:"Usuario aprobado",rechazar_usuario:"Solicitud rechazada",baja_usuario:"Usuario dado de baja",
+  reactivar_usuario:"Usuario reactivado",cambiar_rol:"Cambio de rol",crear_usuario_admin:"Usuario creado por Administrador",
+  cambiar_password:"Cambio de contraseña",recuperar_password:"Recuperación de contraseña",
+  crear_campana:"Campaña creada",duplicar_campana:"Campaña duplicada",editar_preguntas:"Preguntas de campaña editadas",
+  finalizar_campana:"Campaña finalizada",reactivar_campana:"Campaña reactivada",
+  pausar_campana:"Campaña pausada",reanudar_campana:"Campaña reanudada",pausar_global:"Llamadas pausadas (todas)",reanudar_global:"Llamadas reanudadas (todas)",
+  reasignar:"Reasignación de centros",reactivar_cerrados:"Centros reactivados",
+  toggle_auxiliar:"Auxiliar habilitado/deshabilitado",cambiar_limite:"Límite de auxiliar modificado",
+  registrar_actividad:"Actividad registrada",
+};
+
+/* ---- salud del sistema (Administración) ---- */
+async function medirSaludSistema(){
+  const t0=performance.now();
+  let conexionOk=false, latenciaMs=null;
+  try{
+    const {error}=await supabase.from("configuracion").select("clave").limit(1);
+    conexionOk=!error; latenciaMs=Math.round(performance.now()-t0);
+  }catch(e){ conexionOk=false; }
+  const [{data:ultimoCentro}] = await Promise.all([
+    supabase.from("centros_escolares").select("sincronizado_en").order("sincronizado_en",{ascending:false}).limit(1),
+  ]);
+  return {
+    conexionOk, latenciaMs,
+    ultimaSincronizacionCentros: (ultimoCentro&&ultimoCentro[0]&&ultimoCentro[0].sincronizado_en) ? new Date(ultimoCentro[0].sincronizado_en).getTime() : null,
+  };
+}
+
 async function fetchTodasLasFilas(tabla,ordenar){
   const LOTE=1000; let todas=[],desde=0;
   while(true){
@@ -662,10 +702,10 @@ function sanitizeConditions(preguntas){
 
 /* permisos por rol */
 const CAN={
-  Administrador:{bandeja:1,gestionar:1,campanas:1,crear:1,asignar:1,reasignar:1,duplicar:1,consulta:1,editar:1,eliminar:1,editarTodo:1,equipo:1,dashboard:1,admin:1,pausar:1,exportar:1,gestionarCerrados:1,crearUsuario:1,limites:1,auxiliares:1},
-  "Team leader":{bandeja:1,gestionar:1,campanas:1,crear:1,asignar:1,reasignar:1,duplicar:1,consulta:1,editar:1,eliminar:1,editarTodo:1,equipo:1,dashboard:1,admin:0,pausar:1,exportar:0,gestionarCerrados:0,crearUsuario:0,limites:0,auxiliares:1},
-  Supervisor:{bandeja:0,gestionar:0,campanas:1,crear:1,asignar:1,reasignar:1,duplicar:1,consulta:1,editar:1,eliminar:1,editarTodo:1,equipo:1,dashboard:1,admin:0,pausar:1,exportar:1,gestionarCerrados:1,crearUsuario:0,limites:0,auxiliares:1},
-  Agente:{bandeja:1,gestionar:1,campanas:0,crear:0,asignar:0,reasignar:0,duplicar:0,consulta:1,editar:1,eliminar:0,editarTodo:0,equipo:0,dashboard:0,admin:0,pausar:0,exportar:0,gestionarCerrados:0,crearUsuario:0,limites:0,auxiliares:0},
+  Administrador:{bandeja:1,gestionar:1,campanas:1,crear:1,asignar:1,reasignar:1,duplicar:1,consulta:1,editar:1,eliminar:1,editarTodo:1,equipo:1,dashboard:1,admin:1,pausar:1,exportar:1,gestionarCerrados:1,crearUsuario:1,limites:1,auxiliares:1,logs:1,salud:1},
+  "Team leader":{bandeja:1,gestionar:1,campanas:1,crear:1,asignar:1,reasignar:1,duplicar:1,consulta:1,editar:1,eliminar:1,editarTodo:1,equipo:1,dashboard:1,admin:0,pausar:1,exportar:0,gestionarCerrados:0,crearUsuario:0,limites:0,auxiliares:1,logs:0,salud:0},
+  Supervisor:{bandeja:0,gestionar:0,campanas:1,crear:1,asignar:1,reasignar:1,duplicar:1,consulta:1,editar:1,eliminar:1,editarTodo:1,equipo:1,dashboard:1,admin:0,pausar:1,exportar:1,gestionarCerrados:1,crearUsuario:0,limites:0,auxiliares:1,logs:0,salud:0},
+  Agente:{bandeja:1,gestionar:1,campanas:0,crear:0,asignar:0,reasignar:0,duplicar:0,consulta:1,editar:1,eliminar:0,editarTodo:0,equipo:0,dashboard:0,admin:0,pausar:0,exportar:0,gestionarCerrados:0,crearUsuario:0,limites:0,auxiliares:0,logs:0,salud:0},
 };
 
 /* ============================ UTILIDADES ============================ */
@@ -984,6 +1024,7 @@ const App=()=>{
     const cambio={porId:session?session.id:null,cuando:Date.now()};
     setAuxUltimoCambio(cambio);
     if(supabase) updateConfiguracion("auxiliares_habilitados",nuevo,session?session.id:null);
+    if(session) registrarAccion(session.id,"toggle_auxiliar",`${session.nombre} ${nuevo[k]?"habilitó":"deshabilitó"} el auxiliar «${k}»`);
   };
 
   const ctx={theme,setTheme,users,setUsers,patchUser,schools,setSchools,campaigns,setCampaigns,records,setRecords,session,setSession,view,setView,filtro,setFiltro,pausa,setPausa,notify,dailyLog,setDailyLog,bumpDaily,limites,setLimites,auxHabilitados,setAuxHabilitados,auxUltimoCambio,toggleAuxiliar,recoveryUserId,setRecoveryUserId,cargarDatosDeSesion};
@@ -1019,6 +1060,7 @@ function Login({ctx}){
     await updateProfile(u.id,{loginSince:u.loginSince});
     const ms=Date.now(),hoy=dayKey();
     await registrarPrimerLoginDB(u.id,hoy,ms);
+    registrarAccion(u.id,"login",`${u.nombre} (${u.rol}) inició sesión`);
     await cargarDatosDeSesion(u);
     setLoading(false);
     console.log(`[LOGIN] ${u.nombre} (${u.rol}) · ${hoy} ${new Date(ms).toLocaleTimeString("es-SV")} — primer login del día registrado si no existía uno previo.`);
@@ -1030,9 +1072,10 @@ function Login({ctx}){
     if(!rn||!re||!rp)return setMsg({k:"err",t:"Completa todos los campos."});
     if(!passwordValida(rp))return setMsg({k:"err",t:"La contraseña no cumple los requisitos mínimos (ver la lista debajo del campo)."});
     setLoading(true);
-    const {error}=await supabase.auth.signUp({email:re.trim(),password:rp,options:{data:{nombre:rn,rol:rr}}});
+    const {data,error}=await supabase.auth.signUp({email:re.trim(),password:rp,options:{data:{nombre:rn,rol:rr}}});
     setLoading(false);
     if(error) return setMsg({k:"err",t:mapAuthError(error)});
+    if(data&&data.user) registrarAccion(data.user.id,"solicitar_acceso",`${rn} solicitó acceso como ${rr}`);
     setMsg({k:"ok",t:"Solicitud enviada. Un Administrador o Supervisor debe aprobar tu acceso."});setMode("login");setEmail(re.trim());setPass("");
   };
 
@@ -1117,8 +1160,8 @@ function CambiarPassword({ctx,modo}){
     setLoading(false);
     if(error) return setMsg({k:"err",t:mapAuthError(error)});
     notify("Contraseña actualizada correctamente.");
-    if(modo==="recuperacion"){ setRecoveryUserId(null); await supabase.auth.signOut(); }
-    else { setSession(s=>({...s,debeCambiarPassword:false})); }
+    if(modo==="recuperacion"){ registrarAccion(data.user.id,"recuperar_password","Contraseña restablecida vía enlace de recuperación"); setRecoveryUserId(null); await supabase.auth.signOut(); }
+    else { registrarAccion(session.id,"cambiar_password","Contraseña cambiada en el primer ingreso"); setSession(s=>({...s,debeCambiarPassword:false})); }
   };
 
   return (<div className="login-wrap">
@@ -1163,6 +1206,7 @@ function CambiarPasswordModal({ctx,onClose}){
     setLoading(false);
     if(error) return setMsg({k:"err",t:mapAuthError(error)});
     notify("Contraseña actualizada correctamente.");
+    registrarAccion(session.id,"cambiar_password","Contraseña cambiada voluntariamente");
     onClose();
   };
 
@@ -1237,6 +1281,7 @@ function Shell({ctx,toast}){
     const cur=session.opStatus||"Activo";
     if(cur!=="Activo" && session.statusSince && STATUS_FIELD[cur]) bumpDaily(session.id,today,STATUS_FIELD[cur],(t-session.statusSince)/1000);
     if(supabase) await registrarUltimoLogoutDB(session.id,today,t);
+    if(supabase) registrarAccion(session.id,"logout",`${session.nombre} (${session.rol}) cerró sesión`);
     console.log(`[LOGOUT] ${session.nombre} (${session.rol}) · ${today} ${new Date(t).toLocaleTimeString("es-SV")} — último logout del día registrado.`);
     patchUser(session.id,{loginSince:null,opStatus:"Activo",statusSince:null});
     if(supabase) await supabase.auth.signOut();
@@ -1249,8 +1294,10 @@ function Shell({ctx,toast}){
     {k:"equipo",ic:"🧑‍💼",t:"Equipo de agentes",show:can.equipo},
     {k:"dashboard",ic:"📊",t:"Dashboard de avance",show:can.dashboard},
     {k:"admin",ic:"🛡️",t:"Administración",show:can.admin},
+    {k:"logs",ic:"📜",t:"Logs de usuarios",show:can.logs},
+    {k:"salud",ic:"💚",t:"Salud del sistema",show:can.salud},
   ].filter(x=>x.show);
-  const titles={bandeja:"Bandeja de llamadas",campanas:"Campañas",consulta:"Consulta y edición (inbound)",equipo:"Equipo de agentes",dashboard:"Dashboard de avance",admin:"Administración de usuarios"};
+  const titles={bandeja:"Bandeja de llamadas",campanas:"Campañas",consulta:"Consulta y edición (inbound)",equipo:"Equipo de agentes",dashboard:"Dashboard de avance",admin:"Administración de usuarios",logs:"Logs de usuarios",salud:"Salud del sistema"};
   const withWeek=["bandeja","campanas","consulta","dashboard"].includes(view);
   const initials=session.nombre.split(" ").map(x=>x[0]).slice(0,2).join("");
   return (<div className="shell">
@@ -1283,6 +1330,8 @@ function Shell({ctx,toast}){
         {view==="equipo" && <Equipo ctx={ctx}/>}
         {view==="dashboard" && <Dashboard ctx={ctx}/>}
         {view==="admin" && <Administracion ctx={ctx}/>}
+        {view==="logs" && <LogsUsuarios ctx={ctx}/>}
+        {view==="salud" && <SaludSistema ctx={ctx}/>}
       </div>
     </div>
     {toast && <div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",zIndex:80}}><div className={"alert alert-"+(toast.kind==="err"?"err":toast.kind==="info"?"info":"ok")} style={{boxShadow:"var(--shadow-lg)",margin:0}}>{toast.m}</div></div>}
@@ -1411,6 +1460,7 @@ function CallPanel({ctx,camp,school,rec,onClose}){
       intentos:(base.intentos||0)+(intentosInc?1:0),dur:sec,updatedMs:Date.now()};
     setRecords(p=> prev?p.map(r=>r.id===prev.id?nr:r):[...p,nr]);
     if(supabase) upsertRegistroDB(camp.id,school.codigo,{agentId:nr.agentId,estado:nr.estado,actividades:nr.actividades,wrong:nr.wrong,intentos:nr.intentos,dur:nr.dur});
+    if(supabase) registrarAccion(session.id,"registrar_actividad",`${session.nombre} marcó ${school.codigo} (${school.nombre}) como «${nuevoEstado}» en «${camp.titulo}»`);
     return nr;
   };
   const guardarContactado=()=>{
@@ -1473,9 +1523,6 @@ function CallPanel({ctx,camp,school,rec,onClose}){
     {efectivo==="Contactado" && <>
       <div className="divider"/>
       <div style={{display:"flex",alignItems:"center"}}><div className="section-title grow" style={{margin:0}}>Actividades registradas ({acts.length})</div></div>
-      <div style={{padding:"10px 12px",background:"var(--surface-2)",borderRadius:10,fontSize:13,color:"var(--text-dim)",margin:"8px 0 12px"}}>
-        «Le saludamos del Ministerio de Educación. Estamos registrando las actividades que su centro tiene programadas para {rangeLabel(camp.fechaDesde,camp.fechaHasta)}. ¿Podría indicarnos cuáles serán?»
-      </div>
 
       {acts.map((a,i)=>(editIdx===i?null:
         <div key={i} className="act-card">
@@ -1493,7 +1540,7 @@ function CallPanel({ctx,camp,school,rec,onClose}){
         <div className="section-title" style={{marginTop:0}}>{editIdx!=null?"Editar actividad":"Nueva actividad"}</div>
         <PreguntasEditor preguntas={preguntas} ans={actualAns} setAns={setActualAns}/>
         <div style={{display:"flex",gap:8,marginTop:preguntas.length?4:0}}>
-          <button className="btn btn-primary btn-sm" onClick={agregarActividad}>{editIdx!=null?"Guardar cambios":"＋ Agregar actividad"}</button>
+          <button className="btn btn-primary btn-sm" onClick={agregarActividad}>{editIdx!=null?"Guardar cambios":"Guardar respuesta"}</button>
           {editIdx!=null&&<button className="btn btn-ghost btn-sm" onClick={cancelarEdicion}>Cancelar edición</button>}
         </div>
       </div>
@@ -1518,6 +1565,7 @@ function Campanas({ctx}){
     const nuevo=c.estado==="En curso"?"Finalizada":"En curso";
     setCampaigns(p=>p.map(x=>x.id===c.id?{...x,estado:nuevo}:x));
     if(supabase) actualizarCampanaDB(c.id,{estado:nuevo});
+    registrarAccion(session.id,nuevo==="Finalizada"?"finalizar_campana":"reactivar_campana",`${session.nombre} ${nuevo==="Finalizada"?"finalizó":"reactivó"} la campaña «${c.titulo}»`);
   };
 
   return (<div className="grid">
@@ -1603,7 +1651,7 @@ function exportarCampanaExcel(camp,schools,users,records){
 
 /* ---- Duplicar campaña (sin respuestas, exige nuevo nombre) ---- */
 function DuplicateModal({ctx,camp,onClose}){
-  const {campaigns,setCampaigns,notify}=ctx;
+  const {campaigns,setCampaigns,session,notify}=ctx;
   const [nombre,setNombre]=useState(camp.titulo+" (copia)");
   const [err,setErr]=useState(null);
   const [guardando,setGuardando]=useState(false);
@@ -1624,6 +1672,7 @@ function DuplicateModal({ctx,camp,onClose}){
       copiaLocal.id=idReal;
     }
     setCampaigns(p=>[...p,copiaLocal]);
+    registrarAccion(session.id,"duplicar_campana",`${session.nombre} duplicó «${camp.titulo}» como «${n}»`);
     notify("Campaña duplicada sin registros: "+n);onClose();
   };
   return (<Modal title="Duplicar campaña" onClose={onClose} foot={<><button className="btn btn-ghost" onClick={onClose}>Cancelar</button><button className="btn btn-accent" disabled={guardando} onClick={dup}>{guardando?"Guardando…":"Duplicar"}</button></>}>
@@ -1635,7 +1684,7 @@ function DuplicateModal({ctx,camp,onClose}){
 
 /* ---- Reasignar CE no contactados: por agente(s) o por turno, siempre de forma equitativa ---- */
 function ReassignModal({ctx,camp,onClose}){
-  const {campaigns,setCampaigns,records,records:recs,setRecords,schools,users,notify}=ctx;
+  const {campaigns,setCampaigns,records,records:recs,setRecords,schools,users,session,notify}=ctx;
   const [modo,setModo]=useState("agente"); // agente | turno
   const asg=getAssign(camp);
   const campAgentes=camp.agentIds.map(id=>users.find(u=>u.id===id)).filter(Boolean);
@@ -1685,6 +1734,7 @@ function ReassignModal({ctx,camp,onClose}){
       await Promise.all(selected.map(codigo=>upsertRegistroDB(camp.id,codigo,{agentId:nuevoParcial[codigo]})));
     }
     notify(`Reasignados ${selected.length} centro(s) entre ${destinoIds.length} agente(s), de forma equitativa.`);
+    registrarAccion(session.id,"reasignar",`${session.nombre} reasignó ${selected.length} centro(s) de «${camp.titulo}» entre ${destinoIds.length} agente(s)`);
     onClose();
   };
 
@@ -1757,7 +1807,7 @@ function ReassignModal({ctx,camp,onClose}){
 
 /* ---- Gestionar centros cerrados por no contacto: reactivar o reasignar, uno a uno o en lote ---- */
 function CerradosModal({ctx,camp,onClose}){
-  const {campaigns,records,setRecords,setCampaigns,schools,users,notify}=ctx;
+  const {campaigns,records,setRecords,setCampaigns,schools,users,session,notify}=ctx;
   const asg=getAssign(camp);
   const agName=id=>(users.find(u=>u.id===id)||{}).nombre||"—";
   const cerrados=camp.schoolCodes.filter(code=>{const r=records.find(rr=>rr.campaignId===camp.id&&rr.codigo===code);return r&&r.estado==="Cerrado por no contacto";});
@@ -1770,14 +1820,15 @@ function CerradosModal({ctx,camp,onClose}){
     setRecords(p=>p.map(r=>(r.campaignId===camp.id&&codes.includes(r.codigo))?{...r,estado:"Pendiente",intentos:0,wrong:[]}:r));
     if(supabase) actualizarRegistrosPorCodigosDB(camp.id,codes,{estado:"Pendiente",intentos:0,wrong:[]});
   };
-  const reactivarUno=code=>{ reactivarCodes([code]); notify("Centro reactivado."); };
-  const reactivarSeleccionados=()=>{ if(!selected.length) return; reactivarCodes(selected); notify(`${selected.length} centro(s) reactivado(s).`); };
+  const reactivarUno=code=>{ reactivarCodes([code]); registrarAccion(session.id,"reactivar_cerrados",`${session.nombre} reactivó el centro ${code} en «${camp.titulo}»`); notify("Centro reactivado."); };
+  const reactivarSeleccionados=()=>{ if(!selected.length) return; reactivarCodes(selected); registrarAccion(session.id,"reactivar_cerrados",`${session.nombre} reactivó ${selected.length} centro(s) en «${camp.titulo}»`); notify(`${selected.length} centro(s) reactivado(s).`); };
 
   const reasignarUno=(code,nuevoAgente)=>{
     if(!nuevoAgente) return;
     setCampaigns(p=>p.map(c=>c.id===camp.id?{...c,assign:{...getAssign(c),[code]:nuevoAgente}}:c));
     setRecords(p=>p.map(r=>(r.campaignId===camp.id&&r.codigo===code)?{...r,agentId:nuevoAgente,estado:"Pendiente",intentos:0,wrong:[]}:r));
     if(supabase) upsertRegistroDB(camp.id,code,{agentId:nuevoAgente,estado:"Pendiente",intentos:0,wrong:[]});
+    registrarAccion(session.id,"reasignar",`${session.nombre} reasignó el centro cerrado ${code} en «${camp.titulo}»`);
     notify("Centro reasignado y reactivado.");
   };
 
@@ -1793,6 +1844,7 @@ function CerradosModal({ctx,camp,onClose}){
     setCampaigns(p=>p.map(c=>c.id===camp.id?{...c,assign:{...getAssign(c),...nuevoParcial}}:c));
     setRecords(p=>p.map(r=>(r.campaignId===camp.id&&selected.includes(r.codigo))?{...r,agentId:nuevoParcial[r.codigo],estado:"Pendiente",intentos:0,wrong:[]}:r));
     if(supabase) await Promise.all(selected.map(codigo=>upsertRegistroDB(camp.id,codigo,{agentId:nuevoParcial[codigo],estado:"Pendiente",intentos:0,wrong:[]})));
+    registrarAccion(session.id,"reasignar",`${session.nombre} reasignó ${selected.length} centro(s) cerrado(s) en «${camp.titulo}»`);
     notify(`${selected.length} centro(s) reasignado(s) y reactivado(s) de forma equitativa.`);
     onClose();
   };
@@ -2040,7 +2092,7 @@ function PreguntasBuilder({preguntas,setPreguntas}){
 
 /* ---- Editar las preguntas de una campaña ya creada (Admin/Supervisor/Team leader) ---- */
 function EditQuestionsModal({ctx,camp,onClose}){
-  const {setCampaigns,notify}=ctx;
+  const {setCampaigns,session,notify}=ctx;
   const [preguntas,setPreguntas]=useState(()=>{
     const base=camp.preguntas&&camp.preguntas.length?camp.preguntas:[blankPregunta([])];
     return JSON.parse(JSON.stringify(base));
@@ -2049,6 +2101,7 @@ function EditQuestionsModal({ctx,camp,onClose}){
     const limpio=preguntas.filter(q=>q.texto).map(limpiaPregunta);
     setCampaigns(p=>p.map(c=>c.id===camp.id?{...c,preguntas:limpio}:c));
     if(supabase) actualizarCampanaDB(camp.id,{preguntas:limpio});
+    registrarAccion(session.id,"editar_preguntas",`${session.nombre} editó las preguntas de «${camp.titulo}»`);
     notify("Preguntas de la campaña actualizadas.");
     onClose();
   };
@@ -2060,11 +2113,11 @@ function EditQuestionsModal({ctx,camp,onClose}){
 
 /* ---- Asistente de creación de campaña ---- */
 function CampaignWizard({ctx,onClose}){
-  const {schools,setSchools,users,campaigns,setCampaigns,filtro,notify}=ctx;
+  const {schools,setSchools,users,campaigns,setCampaigns,filtro,session,notify}=ctx;
   const [step,setStep]=useState(0);
   const steps=["Datos","Preguntas","Centros escolares","Agentes","Resumen"];
   const [titulo,setTitulo]=useState("");
-  const [objetivo,setObjetivo]=useState("Registrar las actividades programadas para el período.");
+  const [objetivo,setObjetivo]=useState("");
   const [fDesde,setFDesde]=useState(filtro.desde);
   const [fHasta,setFHasta]=useState(filtro.hasta);
   const [maxIntentos,setMaxIntentos]=useState(DEFAULT_MAX_INTENTOS);
@@ -2111,6 +2164,7 @@ function CampaignWizard({ctx,onClose}){
       camp.id=idReal;
     }
     setCampaigns(p=>[...p,camp]); // NO finaliza otras: varias en paralelo
+    registrarAccion(session.id,"crear_campana",`${session.nombre} creó la campaña «${camp.titulo}» (${codes.length} centros, ${agentIds.length} agentes)`);
     notify(`Campaña creada · ${codes.length} centros entre ${agentIds.length} agentes`);onClose();
   };
   const perAgent=finalAgents.length?Math.floor(selectedSchools.length/finalAgents.length):0;
@@ -2142,7 +2196,7 @@ function CampaignWizard({ctx,onClose}){
       <div className="field"><label>Cantidad máxima de intentos antes de cerrar por no contacto</label>
         <input className="input" type="number" min={1} max={10} style={{width:100}} value={maxIntentos} onChange={e=>setMaxIntentos(e.target.value)}/>
         <small className="muted" style={{display:"block",marginTop:6}}>Al llegar a este número de intentos sin contactar, el centro se cierra automáticamente y desaparece de la bandeja.</small></div>
-      <div className="field"><label>Objetivo</label><textarea className="input" rows={2} value={objetivo} onChange={e=>setObjetivo(e.target.value)}/></div>
+      <div className="field"><label>Objetivo</label><textarea className="input" rows={2} placeholder="Ej. Registrar las actividades programadas para el período." value={objetivo} onChange={e=>setObjetivo(e.target.value)}/></div>
     </div>}
 
     {step===1 && <PreguntasBuilder preguntas={preguntas} setPreguntas={setPreguntas}/>}
@@ -2287,7 +2341,7 @@ function InboundCE({ctx,codigo}){
         ? <div className="card card-pad" style={{background:"var(--surface-2)",marginTop:10}}>
             <PreguntasEditor preguntas={campDestino.preguntas||[]} ans={nuevaAns} setAns={setNuevaAns}/>
             <div style={{display:"flex",gap:8,marginTop:6}}>
-              <button className="btn btn-primary btn-sm" onClick={crearRegistro}>Guardar actividad</button>
+              <button className="btn btn-primary btn-sm" onClick={crearRegistro}>Guardar respuesta</button>
               <button className="btn btn-ghost btn-sm" onClick={()=>{setAdding(false);setNuevaAns({});}}>Cancelar</button>
             </div>
           </div>
@@ -2324,7 +2378,7 @@ function InboundCE({ctx,codigo}){
           ? <div className="card card-pad" style={{background:"var(--surface-2)"}}>
               <PreguntasEditor preguntas={preguntas} ans={editAns} setAns={setEditAns}/>
               <div style={{display:"flex",gap:8,marginTop:6}}>
-                <button className="btn btn-primary btn-sm" onClick={()=>guardarAct(r.id,null)}>Guardar actividad</button>
+                <button className="btn btn-primary btn-sm" onClick={()=>guardarAct(r.id,null)}>Guardar respuesta</button>
                 <button className="btn btn-ghost btn-sm" onClick={()=>{setAdding(false);setEditAns({});}}>Cancelar</button>
               </div>
             </div>
@@ -2363,6 +2417,7 @@ function Equipo({ctx}){
     const nuevaPausada=!(campSel&&campSel.pausada);
     setCampaigns(p=>p.map(c=>c.id===campPausaSel?{...c,pausada:nuevaPausada}:c));
     if(supabase) actualizarCampanaDB(campPausaSel,{pausada:nuevaPausada});
+    registrarAccion(session.id,nuevaPausada?"pausar_campana":"reanudar_campana",`${session.nombre} ${nuevaPausada?"pausó":"reanudó"} las llamadas de «${campSel?campSel.titulo:""}»`);
     notify(nuevaPausada?`Llamadas pausadas para «${campSel?campSel.titulo:""}»`:`Llamadas reanudadas para «${campSel?campSel.titulo:""}»`);
   };
 
@@ -2409,7 +2464,8 @@ function Equipo({ctx}){
                   const nuevo={...limites,[k]:Math.max(1,Number(e.target.value)||1)*60};
                   setLimites(nuevo);
                   if(supabase) updateConfiguracion("limites_auxiliares",nuevo,session.id);
-                }}/>
+                }}
+                onBlur={e=>registrarAccion(session.id,"cambiar_limite",`${session.nombre} cambió el límite de «${k}» a ${Math.round((limites[k]||0)/60)} min`)}/>
               <small className="muted">min</small>
             </div>
           </div>
@@ -2457,7 +2513,7 @@ function Equipo({ctx}){
     <div className="card card-pad">
       <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
         <div className="grow"><div className="section-title" style={{margin:0}}>Control de llamadas · todas las campañas</div><small className="muted">Pausar impide iniciar nuevas llamadas en cualquier campaña; las que estén en curso pueden finalizarse.</small></div>
-        <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontWeight:600,fontSize:13}}>{pausa?"Nuevas llamadas en pausa":"Nuevas llamadas activas"}</span><Switch on={pausa} disabled={!can.pausar} onClick={()=>{setPausa(!pausa);notify(pausa?"Llamadas reanudadas para todas las campañas":"Nuevas llamadas en pausa para todas las campañas");}}/></div>
+        <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontWeight:600,fontSize:13}}>{pausa?"Nuevas llamadas en pausa":"Nuevas llamadas activas"}</span><Switch on={pausa} disabled={!can.pausar} onClick={()=>{const nueva=!pausa;setPausa(nueva);registrarAccion(session.id,nueva?"pausar_global":"reanudar_global",`${session.nombre} ${nueva?"pausó":"reanudó"} las llamadas en todas las campañas`);notify(pausa?"Llamadas reanudadas para todas las campañas":"Nuevas llamadas en pausa para todas las campañas");}}/></div>
       </div>
     </div>
     <div className="card card-pad">
@@ -2688,11 +2744,11 @@ function Administracion({ctx}){
   const [crear,setCrear]=useState(false);
   const pend=users.filter(u=>u.estado==="pendiente");
   const resto=users.filter(u=>u.estado!=="pendiente");
-  const approve=u=>{patchUser(u.id,{estado:"activo",...(u.rol==="Agente"?{skill:u.skill||"Outbound",turno:u.turno||CURRENT_SHIFT,disponible:u.disponible!==false,habilitadoFueraTurno:!!u.habilitadoFueraTurno,habilitadoLlamadas:u.habilitadoLlamadas!==false,opStatus:u.opStatus||"Activo",statusSince:null,loginSince:null}:{})});notify("Usuario aprobado");};
-  const reject=u=>{patchUser(u.id,{estado:"inactivo"});notify("Solicitud rechazada","info");};
-  const setRol=(u,rol)=>patchUser(u.id,{rol});
-  const baja=u=>{patchUser(u.id,{estado:"inactivo"});notify("Usuario dado de baja","info");};
-  const reactivar=u=>{patchUser(u.id,{estado:"activo"});notify("Usuario reactivado");};
+  const approve=u=>{patchUser(u.id,{estado:"activo",...(u.rol==="Agente"?{skill:u.skill||"Outbound",turno:u.turno||CURRENT_SHIFT,disponible:u.disponible!==false,habilitadoFueraTurno:!!u.habilitadoFueraTurno,habilitadoLlamadas:u.habilitadoLlamadas!==false,opStatus:u.opStatus||"Activo",statusSince:null,loginSince:null}:{})});registrarAccion(session.id,"aprobar_usuario",`${session.nombre} aprobó a ${u.nombre} (${u.rol})`);notify("Usuario aprobado");};
+  const reject=u=>{patchUser(u.id,{estado:"inactivo"});registrarAccion(session.id,"rechazar_usuario",`${session.nombre} rechazó la solicitud de ${u.nombre}`);notify("Solicitud rechazada","info");};
+  const setRol=(u,rol)=>{patchUser(u.id,{rol});registrarAccion(session.id,"cambiar_rol",`${session.nombre} cambió el rol de ${u.nombre}: ${u.rol} → ${rol}`);};
+  const baja=u=>{patchUser(u.id,{estado:"inactivo"});registrarAccion(session.id,"baja_usuario",`${session.nombre} dio de baja a ${u.nombre}`);notify("Usuario dado de baja","info");};
+  const reactivar=u=>{patchUser(u.id,{estado:"activo"});registrarAccion(session.id,"reactivar_usuario",`${session.nombre} reactivó a ${u.nombre}`);notify("Usuario reactivado");};
 
   return (<div className="grid">
     <div style={{display:"flex",justifyContent:"flex-end"}}>
@@ -2732,9 +2788,165 @@ function Administracion({ctx}){
   </div>);
 }
 
+/* ============================ LOGS DE USUARIOS (Administrador) ============================ */
+function LogsUsuarios({ctx}){
+  const {users,notify}=ctx;
+  const [filas,setFilas]=useState([]);
+  const [cargando,setCargando]=useState(true);
+  const [usuarioSel,setUsuarioSel]=useState("todos");
+  const [desde,setDesde]=useState("");
+  const [hasta,setHasta]=useState("");
+  const [busqueda,setBusqueda]=useState("");
+
+  const cargar=async()=>{
+    if(!supabase) return setCargando(false);
+    setCargando(true);
+    const data=await fetchBitacora();
+    setFilas(data);
+    setCargando(false);
+  };
+  useEffect(()=>{ cargar(); },[]);
+
+  const nombreDe=id=>(users.find(u=>u.id===id)||{}).nombre||"—";
+  const filtradas=filas.filter(f=>{
+    if(usuarioSel!=="todos" && f.usuarioId!==usuarioSel) return false;
+    if(desde && f.cuando < new Date(desde+"T00:00:00").getTime()) return false;
+    if(hasta && f.cuando > new Date(hasta+"T23:59:59").getTime()) return false;
+    if(busqueda.trim()){
+      const q=busqueda.trim().toLowerCase();
+      const texto=(nombreDe(f.usuarioId)+" "+(ACCION_LABEL[f.accion]||f.accion)+" "+(f.detalle||"")).toLowerCase();
+      if(!texto.includes(q)) return false;
+    }
+    return true;
+  });
+  const LIMITE_VISTA=400;
+  const visibles=filtradas.slice(0,LIMITE_VISTA);
+
+  return (<div className="grid">
+    <div style={{display:"flex",alignItems:"center",gap:10}}>
+      <div className="grow"><div className="section-title" style={{margin:0}}>Logs de usuarios</div><small className="muted">Historial de inicios/cierres de sesión y acciones importantes realizadas en la herramienta.</small></div>
+      <button className="btn btn-ghost btn-sm" onClick={cargar} disabled={cargando}>{cargando?"Cargando…":"⟳ Actualizar"}</button>
+    </div>
+
+    <div className="card card-pad">
+      <div className="row" style={{gap:12,flexWrap:"wrap",alignItems:"flex-end"}}>
+        <div className="field" style={{margin:0}}><label>Usuario</label>
+          <select className="input" value={usuarioSel} onChange={e=>setUsuarioSel(e.target.value)}>
+            <option value="todos">Todos</option>
+            {[...users].sort((a,b)=>a.nombre.localeCompare(b.nombre,"es")).map(u=><option key={u.id} value={u.id}>{u.nombre}</option>)}
+          </select>
+        </div>
+        <div className="field" style={{margin:0}}><label>Desde</label><input className="input" type="date" value={desde} onChange={e=>setDesde(e.target.value)}/></div>
+        <div className="field" style={{margin:0}}><label>Hasta</label><input className="input" type="date" value={hasta} onChange={e=>setHasta(e.target.value)}/></div>
+        <div className="field grow" style={{margin:0}}><label>Buscar</label><input className="input" placeholder="Buscar por texto..." value={busqueda} onChange={e=>setBusqueda(e.target.value)}/></div>
+      </div>
+    </div>
+
+    <div className="card card-pad">
+      {cargando ? <div className="empty" style={{padding:20}}>Cargando bitácora…</div>
+      : filtradas.length===0 ? <div className="empty" style={{padding:20}}>No hay registros que coincidan con el filtro.</div>
+      : <>
+        <div className="tbl-wrap scroll-y"><table>
+          <thead><tr><th>Fecha y hora</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr></thead>
+          <tbody>{visibles.map(f=>(
+            <tr key={f.id}>
+              <td className="mono" style={{whiteSpace:"nowrap"}}>{new Date(f.cuando).toLocaleString("es-SV")}</td>
+              <td><b>{nombreDe(f.usuarioId)}</b></td>
+              <td><span className="tag">{ACCION_LABEL[f.accion]||f.accion}</span></td>
+              <td style={{color:"var(--text-dim)"}}>{f.detalle||"—"}</td>
+            </tr>
+          ))}</tbody>
+        </table></div>
+        <small className="muted" style={{display:"block",marginTop:8}}>
+          Mostrando {visibles.length} de {filtradas.length} registro(s) que coinciden con el filtro
+          {filtradas.length>LIMITE_VISTA?` (limitado a los ${LIMITE_VISTA} más recientes; afina el filtro para ver menos resultados a la vez)`:""}.
+        </small>
+      </>}
+    </div>
+  </div>);
+}
+
+/* ============================ SALUD DEL SISTEMA (Administrador) ============================ */
+function SaludSistema({ctx}){
+  const {users,campaigns,schools,notify}=ctx;
+  const [salud,setSalud]=useState(null);
+  const [actividad,setActividad]=useState([]);
+  const [cargando,setCargando]=useState(true);
+  const [ultimaActualizacion,setUltimaActualizacion]=useState(null);
+  const [autoRefresh,setAutoRefresh]=useState(true);
+
+  const actualizar=async()=>{
+    if(!supabase) return setCargando(false);
+    setCargando(true);
+    const [s,b]=await Promise.all([medirSaludSistema(),fetchBitacora()]);
+    setSalud(s);
+    setActividad(b.slice(0,10));
+    setUltimaActualizacion(Date.now());
+    setCargando(false);
+  };
+  useEffect(()=>{ actualizar(); },[]);
+  useEffect(()=>{
+    if(!autoRefresh) return;
+    const id=setInterval(actualizar,30000);
+    return ()=>clearInterval(id);
+  },[autoRefresh]);
+
+  const nombreDe=id=>(users.find(u=>u.id===id)||{}).nombre||"—";
+  const usuariosConSesion=users.filter(u=>u.loginSince).length;
+  const campanasEnCurso=campaigns.filter(c=>c.estado==="En curso").length;
+
+  const antiguedadSync=salud&&salud.ultimaSincronizacionCentros?Date.now()-salud.ultimaSincronizacionCentros:null;
+  const nivelSync=antiguedadSync==null?"danger":antiguedadSync<26*3600*1000?"success":antiguedadSync<48*3600*1000?"warn":"danger";
+  const nivelConexion=!salud?"warn":salud.conexionOk?"success":"danger";
+
+  const Tarjeta=({titulo,valor,meta,nivel})=>(
+    <div className="card card-pad" style={{borderLeft:`4px solid var(--${nivel==="success"?"success":nivel==="warn"?"warn":"danger"})`}}>
+      <div style={{fontSize:11.5,color:"var(--text-dim)",textTransform:"uppercase",letterSpacing:".03em"}}>{titulo}</div>
+      <div style={{fontSize:22,fontWeight:800,marginTop:4}}>{valor}</div>
+      {meta&&<div style={{fontSize:12,color:"var(--text-dim)",marginTop:2}}>{meta}</div>}
+    </div>
+  );
+
+  return (<div className="grid">
+    <div style={{display:"flex",alignItems:"center",gap:10}}>
+      <div className="grow">
+        <div className="section-title" style={{margin:0}}>Salud del sistema</div>
+        <small className="muted">{ultimaActualizacion?`Actualizado hace un momento (${new Date(ultimaActualizacion).toLocaleTimeString("es-SV")})`:"Cargando…"}</small>
+      </div>
+      <label className="checkline" style={{border:"none",padding:0,gap:6}}>
+        <input type="checkbox" checked={autoRefresh} onChange={e=>setAutoRefresh(e.target.checked)}/>
+        <small>Actualizar cada 30s</small>
+      </label>
+      <button className="btn btn-ghost btn-sm" onClick={actualizar} disabled={cargando}>{cargando?"Actualizando…":"⟳ Actualizar ahora"}</button>
+    </div>
+
+    <div className="grid" style={{gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))"}}>
+      <Tarjeta titulo="Conexión a Supabase" valor={!salud?"—":salud.conexionOk?"Conectado":"Sin conexión"} meta={salud&&salud.latenciaMs!=null?`${salud.latenciaMs} ms de latencia`:null} nivel={nivelConexion}/>
+      <Tarjeta titulo="Sincronización de centros" valor={salud&&salud.ultimaSincronizacionCentros?new Date(salud.ultimaSincronizacionCentros).toLocaleString("es-SV"):"Sin datos"} meta={antiguedadSync!=null?`hace ${Math.round(antiguedadSync/3600000)} h`:null} nivel={nivelSync}/>
+      <Tarjeta titulo="Usuarios con sesión activa" valor={usuariosConSesion} meta={`de ${users.length} cuentas totales`} nivel="success"/>
+      <Tarjeta titulo="Campañas en curso" valor={campanasEnCurso} nivel="success"/>
+      <Tarjeta titulo="Centros escolares en catálogo" valor={schools.length} nivel="success"/>
+    </div>
+
+    <div className="card card-pad">
+      <div className="section-title" style={{marginTop:0}}>Actividad reciente</div>
+      {actividad.length===0 ? <div className="empty" style={{padding:14}}>Sin actividad registrada todavía.</div>
+      : <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {actividad.map(f=>(
+            <div key={f.id} style={{display:"flex",gap:10,fontSize:13,alignItems:"baseline"}}>
+              <span className="mono" style={{color:"var(--text-faint)",flexShrink:0}}>{new Date(f.cuando).toLocaleTimeString("es-SV")}</span>
+              <span><b>{nombreDe(f.usuarioId)}</b> — {(ACCION_LABEL[f.accion]||f.accion).toLowerCase()}{f.detalle?`: ${f.detalle}`:""}</span>
+            </div>
+          ))}
+        </div>}
+      <small className="muted" style={{display:"block",marginTop:10}}>Para ver el historial completo con filtros, ve a «Logs de usuarios».</small>
+    </div>
+  </div>);
+}
+
 /* ---- Crear usuario directamente (Administrador) ---- */
 function CrearUsuarioModal({ctx,onClose}){
-  const {users,setUsers,notify}=ctx;
+  const {users,setUsers,session,notify}=ctx;
   const [nombre,setNombre]=useState("");
   const [email,setEmail]=useState("");
   const [pass,setPass]=useState("");
@@ -2759,6 +2971,7 @@ function CrearUsuarioModal({ctx,onClose}){
       if(!res.ok||out.error) return setErr(out.error||"No se pudo crear el usuario.");
       const nuevos=await fetchProfiles();
       setUsers(nuevos);
+      registrarAccion(session.id,"crear_usuario_admin",`${session.nombre} creó la cuenta de ${nombre.trim()} (${rol})`);
       notify(`Usuario creado: ${nombre.trim()} (${rol})`);onClose();
     }catch(e){
       setLoading(false);
