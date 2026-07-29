@@ -250,6 +250,9 @@
 <script type="text/babel">
 const {useState,useEffect,useMemo,useRef} = React;
 
+/* Número de versión mostrado en la barra lateral. Súbelo con cada entrega. */
+const APP_VERSION = "1.1";
+
 /* ============================ SUPABASE (conexión real) ============================
    Project URL y Publishable key: son seguras de tener aquí, a la vista, en el
    navegador — a diferencia de la Secret key, están diseñadas para esto. */
@@ -1259,6 +1262,7 @@ function Shell({ctx,toast}){
       <div className="me"><div className="avatar">{initials}</div><div className="grow"><b>{session.nombre}</b><span>{session.rol}</span></div></div>
       <button className="nav-item" style={{marginTop:8}} onClick={()=>setCambiarPass(true)}><span className="ico">🔑</span>Cambiar contraseña</button>
       <button className="nav-item" onClick={logout}><span className="ico">⎋</span>Cerrar sesión</button>
+      <div style={{textAlign:"center",padding:"10px 0 4px",fontSize:11,color:"var(--text-faint)"}}>V{APP_VERSION}</div>
     </aside>
     <div className="main">
       <header className="topbar">
