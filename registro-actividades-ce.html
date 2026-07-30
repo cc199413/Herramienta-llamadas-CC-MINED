@@ -400,15 +400,22 @@ async function medirSaludSistema(){
 }
 
 async function fetchTodasLasFilas(tabla,ordenar){
-  const LOTE=1000; let todas=[],desde=0;
-  while(true){
-    let q=supabase.from(tabla).select("*");
-    if(ordenar) q=q.order(ordenar.col,{ascending:ordenar.asc!==false});
-    const {data,error}=await q.range(desde,desde+LOTE-1);
-    if(error){ console.error(`Error leyendo ${tabla}:`,error.message); break; }
-    todas=todas.concat(data||[]);
-    if(!data||data.length<LOTE) break;
-    desde+=LOTE;
+  const LOTE=1000;
+  let q=supabase.from(tabla).select("*",{count:"exact"});
+  if(ordenar) q=q.order(ordenar.col,{ascending:ordenar.asc!==false});
+  const {data:primera,error,count}=await q.range(0,LOTE-1);
+  if(error){ console.error(`Error leyendo ${tabla}:`,error.message); return []; }
+  let todas=primera||[];
+  if(count && count>LOTE){
+    const paginasRestantes=Math.ceil(count/LOTE)-1;
+    const promesas=[];
+    for(let i=1;i<=paginasRestantes;i++){
+      let qi=supabase.from(tabla).select("*");
+      if(ordenar) qi=qi.order(ordenar.col,{ascending:ordenar.asc!==false});
+      promesas.push(qi.range(i*LOTE,(i+1)*LOTE-1));
+    }
+    const resultados=await Promise.all(promesas); // todas las páginas restantes a la vez, no una por una
+    resultados.forEach(r=>{ if(!r.error) todas=todas.concat(r.data||[]); else console.error(`Error leyendo ${tabla} (página adicional):`,r.error.message); });
   }
   return todas;
 }
@@ -447,24 +454,60 @@ async function fetchCampaignsAndRecords(){
       id:c.id, titulo:c.titulo, objetivo:c.objetivo, fechaDesde:c.fecha_desde, fechaHasta:c.fecha_hasta,
       maxIntentos:c.max_intentos, preguntas:c.preguntas||[], estado:c.estado, pausada:!!c.pausada,
       agentIds, schoolCodes, assign,
+      borradorEstado:c.borrador_estado||null, creadoPor:c.creado_por||null,
+      actualizadoEn:c.actualizado_en?new Date(c.actualizado_en).getTime():null,
     };
   });
   const records=(regs||[]).map(dbRegistroToRecord);
   return {campaigns,records};
 }
 /* crea una campaña completa: fila en campanas + campana_agentes + un registro por cada centro asignado */
-async function crearCampanaDB(camp){
-  const {data:campRow,error}=await supabase.from("campanas").insert({
+async function crearCampanaDB(camp,borradorId){
+  let campanaId=borradorId||null;
+  const datosBase={
     titulo:camp.titulo, objetivo:camp.objetivo, fecha_desde:camp.fechaDesde, fecha_hasta:camp.fechaHasta,
-    max_intentos:camp.maxIntentos, preguntas:camp.preguntas, estado:camp.estado||"En curso", pausada:false,
-  }).select().single();
-  if(error){ console.error("Error creando campaña:",error.message); return null; }
-  const campanaId=campRow.id;
-  if(camp.agentIds.length) await supabase.from("campana_agentes").insert(camp.agentIds.map(agente_id=>({campana_id:campanaId,agente_id})));
-  if(camp.schoolCodes.length) await supabase.from("registros").insert(camp.schoolCodes.map(codigo=>({
-    campana_id:campanaId, codigo_centro:codigo, agente_id:camp.assign[codigo]||null, estado:"Pendiente",
-  })));
+    max_intentos:camp.maxIntentos, preguntas:camp.preguntas, estado:camp.estado||"En curso", pausada:false, borrador_estado:null,
+  };
+  if(campanaId){
+    const {error}=await supabase.from("campanas").update(datosBase).eq("id",campanaId);
+    if(error){ console.error("Error convirtiendo borrador en campaña:",error.message); return null; }
+  } else {
+    const {data:campRow,error}=await supabase.from("campanas").insert(datosBase).select().single();
+    if(error){ console.error("Error creando campaña:",error.message); return null; }
+    campanaId=campRow.id;
+  }
+  const LOTE=500;
+  const tareas=[];
+  if(camp.agentIds.length) tareas.push(supabase.from("campana_agentes").insert(camp.agentIds.map(agente_id=>({campana_id:campanaId,agente_id}))));
+  for(let i=0;i<camp.schoolCodes.length;i+=LOTE){
+    const lote=camp.schoolCodes.slice(i,i+LOTE).map(codigo=>({
+      campana_id:campanaId, codigo_centro:codigo, agente_id:camp.assign[codigo]||null, estado:"Pendiente",
+    }));
+    tareas.push(supabase.from("registros").insert(lote));
+  }
+  await Promise.all(tareas); // agentes y todos los lotes de centros, a la vez, no uno tras otro
   return campanaId;
+}
+/* guarda (crea o actualiza) un borrador de campaña — nunca crea campana_agentes
+   ni registros todavía, solo la fila de "campanas" con estado="Borrador" */
+async function guardarBorradorDB(borrador,borradorId){
+  const payload={
+    titulo:borrador.titulo||"", objetivo:borrador.objetivo||"", fecha_desde:borrador.fechaDesde, fecha_hasta:borrador.fechaHasta,
+    max_intentos:borrador.maxIntentos, preguntas:borrador.preguntas, estado:"Borrador", pausada:false,
+    borrador_estado:borrador.estadoAsistente, creado_por:borrador.creadoPor,
+  };
+  if(borradorId){
+    const {error}=await supabase.from("campanas").update(payload).eq("id",borradorId);
+    if(error){ console.error("Error guardando borrador:",error.message); return borradorId; }
+    return borradorId;
+  }
+  const {data,error}=await supabase.from("campanas").insert(payload).select().single();
+  if(error){ console.error("Error creando borrador:",error.message); return null; }
+  return data.id;
+}
+async function eliminarBorradorDB(id){
+  const {error}=await supabase.from("campanas").delete().eq("id",id);
+  if(error) console.error("Error eliminando borrador:",error.message);
 }
 async function actualizarCampanaDB(id,patch){
   const map={titulo:"titulo",objetivo:"objetivo",fechaDesde:"fecha_desde",fechaHasta:"fecha_hasta",
@@ -492,13 +535,27 @@ async function upsertRegistroDB(campanaId,codigo,patch){
     if(error) console.error("Error creando registro:",error.message);
   }
 }
+/* actualiza varios registros de una sola vez (un solo viaje de red, en vez de
+   uno por cada centro) — usar siempre que se reasignen/actualicen varios
+   centros a la vez, para que la operación sea rápida sin importar cuántos sean */
+async function actualizarRegistrosMasivoDB(campanaId,filasPatch){
+  const map={agentId:"agente_id",estado:"estado",intentos:"intentos",wrong:"numeros_equivocados"};
+  const filas=filasPatch.map(({codigo,...patch})=>{
+    const dbPatch={campana_id:campanaId,codigo_centro:codigo};
+    Object.keys(patch).forEach(k=>{ if(map[k]) dbPatch[map[k]]=patch[k]; });
+    return dbPatch;
+  });
+  if(!filas.length) return;
+  const {error}=await supabase.from("registros").upsert(filas,{onConflict:"campana_id,codigo_centro"});
+  if(error) console.error("Error actualizando registros en lote:",error.message);
+}
 /* actualiza varios registros de una campaña que compartan los mismos códigos (reasignación en lote) */
 async function actualizarRegistrosPorCodigosDB(campanaId,codigos,patch){
   const map={agentId:"agente_id",estado:"estado",intentos:"intentos",wrong:"numeros_equivocados"};
   const dbPatch={}; Object.keys(patch).forEach(k=>{ if(map[k]) dbPatch[map[k]]=patch[k]; });
-  await Promise.all(codigos.map(codigo=>
-    supabase.from("registros").update(dbPatch).eq("campana_id",campanaId).eq("codigo_centro",codigo)
-  ));
+  if(!codigos.length) return;
+  const {error}=await supabase.from("registros").update(dbPatch).eq("campana_id",campanaId).in("codigo_centro",codigos);
+  if(error) console.error("Error actualizando registros:",error.message);
 }
 
 /* ---- reglas de contraseña (se usan en primer ingreso, cambio voluntario y recuperación) ----
@@ -519,6 +576,20 @@ function PasswordChecklist({value}){
       <div key={r.k} style={{fontSize:12.5,color:ok?"var(--success)":"var(--text-faint)",display:"flex",alignItems:"center",gap:6}}>
         <span>{ok?"✓":"○"}</span>{r.label}
       </div>);})}
+  </div>);
+}
+
+/* ---- campo de contraseña con botón de mostrar/ocultar (reutilizable en toda la app) ---- */
+function PasswordInput({value,onChange,onKeyDown,placeholder,autoFocus}){
+  const [mostrar,setMostrar]=useState(false);
+  return (<div style={{position:"relative",width:"100%"}}>
+    <input className="input" style={{paddingRight:38}} type={mostrar?"text":"password"}
+      value={value} onChange={onChange} onKeyDown={onKeyDown} placeholder={placeholder} autoFocus={autoFocus}/>
+    <button type="button" onClick={()=>setMostrar(m=>!m)} tabIndex={-1}
+      title={mostrar?"Ocultar contraseña":"Mostrar contraseña"}
+      style={{position:"absolute",right:4,top:0,bottom:0,background:"none",border:"none",cursor:"pointer",fontSize:16,color:"var(--text-faint)",padding:"0 8px",display:"flex",alignItems:"center"}}>
+      {mostrar?"🙈":"👁️"}
+    </button>
   </div>);
 }
 
@@ -648,6 +719,30 @@ function pasaCondicionParte(cond,subAns){
   const match=Array.isArray(a)?a.includes(cond.op):a===cond.op;
   return cond.mode==="neq" ? !match : match;
 }
+const respuestaVacia=v=>v==null||v===""||(Array.isArray(v)&&v.length===0);
+/* devuelve los textos de las preguntas/sub-preguntas OBLIGATORIAS que aún no
+   tienen respuesta, considerando solo las que están visibles en este momento
+   (respeta condicionales y el corte por "finaliza el formulario") */
+function preguntasObligatoriasFaltantes(preguntas,ans){
+  const cutIdx=preguntas.findIndex(q=>terminaFormulario(q,ans));
+  const enAlcance=cutIdx===-1?preguntas:preguntas.slice(0,cutIdx+1);
+  const visibles=enAlcance.filter(q=>pasaCondicion(q.cond,ans));
+  const faltan=[];
+  visibles.forEach(q=>{
+    if(q.tipo==="combinacion"){
+      const subAns=ans[q.id]||{};
+      const partes=q.partes||[];
+      const cutSubIdx=partes.findIndex(p=>terminaParte(p,subAns[p.id]));
+      const partesEnAlcance=cutSubIdx===-1?partes:partes.slice(0,cutSubIdx+1);
+      partesEnAlcance.filter(p=>pasaCondicionParte(p.cond,subAns)).forEach(p=>{
+        if(p.obligatoria && respuestaVacia(subAns[p.id])) faltan.push(`${q.texto} — ${p.label||p.id}`);
+      });
+    } else if(q.obligatoria && respuestaVacia(ans[q.id])){
+      faltan.push(q.texto);
+    }
+  });
+  return faltan;
+}
 /* valores de una actividad (respuestas) para una pregunta, ya normalizados por valorReporte. partId = id de la sub-pregunta (parte), o null para preguntas simples */
 function valoresActividad(act,q,partId){
   const qDef = partId!=null ? (q.partes||[]).find(p=>p.id===partId) : q;
@@ -668,17 +763,17 @@ function labelDeValor(v){ return Array.isArray(v)?v.join(", "):(v==null||v===""?
 /* próximo id disponible con un prefijo dado (para preguntas y sub-preguntas), evita colisiones al duplicar */
 function nextId(items,prefix){ let n=1; while((items||[]).some(it=>it.id===prefix+n)) n++; return prefix+n; }
 const blankOpcion=()=>({texto:"",valorReporte:"",finaliza:false});
-const blankParte=partes=>({id:nextId(partes||[],"p"),label:"",tipo:"multiple",opciones:[blankOpcion(),blankOpcion()],cond:null,opcionesFinaliza:{}});
-const blankPregunta=preguntas=>({id:nextId(preguntas||[],"q"),texto:"",tipo:"multiple",opciones:[blankOpcion(),blankOpcion()],partes:[],cond:null,opcionesFinaliza:{}});
+const blankParte=partes=>({id:nextId(partes||[],"p"),label:"",tipo:"multiple",opciones:[blankOpcion(),blankOpcion()],cond:null,opcionesFinaliza:{},obligatoria:false});
+const blankPregunta=preguntas=>({id:nextId(preguntas||[],"q"),texto:"",tipo:"multiple",opciones:[blankOpcion(),blankOpcion()],partes:[],cond:null,opcionesFinaliza:{},obligatoria:false});
 const limpiaOpciones=ops=>(ops||[]).filter(o=>o&&o.texto&&o.texto.trim()).map(o=>({texto:o.texto.trim(),valorReporte:(o.valorReporte||"").trim(),finaliza:!!o.finaliza}));
 const limpiaParte=p=>{
-  const base={id:p.id,label:p.label,tipo:p.tipo,cond:p.cond&&p.cond.p?p.cond:null};
+  const base={id:p.id,label:p.label,tipo:p.tipo,cond:p.cond&&p.cond.p?p.cond:null,obligatoria:!!p.obligatoria};
   if(p.tipo==="multiple"||p.tipo==="lista") return {...base,opciones:limpiaOpciones(p.opciones)};
   if(p.tipo==="sino") return {...base,opciones:["Sí","No"],opcionesFinaliza:{Sí:!!(p.opcionesFinaliza&&p.opcionesFinaliza["Sí"]),No:!!(p.opcionesFinaliza&&p.opcionesFinaliza["No"])}};
   return {...base,opciones:[]};
 };
 const limpiaPregunta=q=>{
-  const base={id:q.id,texto:q.texto,tipo:q.tipo,cond:q.cond&&q.cond.q?q.cond:null};
+  const base={id:q.id,texto:q.texto,tipo:q.tipo,cond:q.cond&&q.cond.q?q.cond:null,obligatoria:!!q.obligatoria};
   if(q.tipo==="multiple"||q.tipo==="lista") return {...base,opciones:limpiaOpciones(q.opciones)};
   if(q.tipo==="sino") return {...base,opciones:["Sí","No"],opcionesFinaliza:{Sí:!!(q.opcionesFinaliza&&q.opcionesFinaliza["Sí"]),No:!!(q.opcionesFinaliza&&q.opcionesFinaliza["No"])}};
   if(q.tipo==="combinacion") return {...base,opciones:[],partes:(q.partes||[]).filter(p=>p.label||p.tipo).map(limpiaParte)};
@@ -702,10 +797,10 @@ function sanitizeConditions(preguntas){
 
 /* permisos por rol */
 const CAN={
-  Administrador:{bandeja:1,gestionar:1,campanas:1,crear:1,asignar:1,reasignar:1,duplicar:1,consulta:1,editar:1,eliminar:1,editarTodo:1,equipo:1,dashboard:1,admin:1,pausar:1,exportar:1,gestionarCerrados:1,crearUsuario:1,limites:1,auxiliares:1,logs:1,salud:1},
-  "Team leader":{bandeja:1,gestionar:1,campanas:1,crear:1,asignar:1,reasignar:1,duplicar:1,consulta:1,editar:1,eliminar:1,editarTodo:1,equipo:1,dashboard:1,admin:0,pausar:1,exportar:0,gestionarCerrados:0,crearUsuario:0,limites:0,auxiliares:1,logs:0,salud:0},
-  Supervisor:{bandeja:0,gestionar:0,campanas:1,crear:1,asignar:1,reasignar:1,duplicar:1,consulta:1,editar:1,eliminar:1,editarTodo:1,equipo:1,dashboard:1,admin:0,pausar:1,exportar:1,gestionarCerrados:1,crearUsuario:0,limites:0,auxiliares:1,logs:0,salud:0},
-  Agente:{bandeja:1,gestionar:1,campanas:0,crear:0,asignar:0,reasignar:0,duplicar:0,consulta:1,editar:1,eliminar:0,editarTodo:0,equipo:0,dashboard:0,admin:0,pausar:0,exportar:0,gestionarCerrados:0,crearUsuario:0,limites:0,auxiliares:0,logs:0,salud:0},
+  Administrador:{bandeja:1,gestionar:1,campanas:1,crear:1,asignar:1,reasignar:1,duplicar:1,consulta:1,editar:1,eliminar:1,editarTodo:1,equipo:1,dashboard:1,admin:1,pausar:1,exportar:1,gestionarCerrados:1,crearUsuario:1,limites:1,auxiliares:1,logs:1,salud:1,borradores:1},
+  "Team leader":{bandeja:1,gestionar:1,campanas:1,crear:1,asignar:1,reasignar:1,duplicar:1,consulta:1,editar:1,eliminar:1,editarTodo:1,equipo:1,dashboard:1,admin:0,pausar:1,exportar:0,gestionarCerrados:0,crearUsuario:0,limites:0,auxiliares:1,logs:0,salud:0,borradores:1},
+  Supervisor:{bandeja:0,gestionar:0,campanas:1,crear:1,asignar:1,reasignar:1,duplicar:1,consulta:1,editar:1,eliminar:1,editarTodo:1,equipo:1,dashboard:1,admin:0,pausar:1,exportar:1,gestionarCerrados:1,crearUsuario:0,limites:0,auxiliares:1,logs:0,salud:0,borradores:1},
+  Agente:{bandeja:1,gestionar:1,campanas:0,crear:0,asignar:0,reasignar:0,duplicar:0,consulta:1,editar:1,eliminar:0,editarTodo:0,equipo:0,dashboard:0,admin:0,pausar:0,exportar:0,gestionarCerrados:0,crearUsuario:0,limites:0,auxiliares:0,logs:0,salud:0,borradores:0},
 };
 
 /* ============================ UTILIDADES ============================ */
@@ -923,11 +1018,11 @@ function PreguntasEditor({preguntas,ans,setAns}){
     const partesVisibles=partesEnAlcance.filter(p=>pasaCondicionParte(p.cond,subAns));
     return (
     <div className="qcard" key={q.id}>
-      <div style={{fontWeight:600,marginBottom:8}}>{q.texto} <span className="tag">{qTipoLabel(q.tipo)}</span></div>
+      <div style={{fontWeight:600,marginBottom:8}}>{q.texto}{q.obligatoria&&<span style={{color:"var(--danger)"}}> *</span>} <span className="tag">{qTipoLabel(q.tipo)}</span></div>
       {q.tipo==="combinacion"
         ? partesVisibles.map(p=>(
             <div key={p.id} style={{marginBottom:10}}>
-              <small className="muted" style={{display:"block",marginBottom:5}}>{p.label||p.id} · {qTipoLabel(p.tipo)}</small>
+              <small className="muted" style={{display:"block",marginBottom:5}}>{p.label||p.id}{p.obligatoria&&<span style={{color:"var(--danger)"}}> *</span>} · {qTipoLabel(p.tipo)}</small>
               <AnswerField tipo={p.tipo} opciones={p.opciones} value={subAns[p.id]}
                 onChange={v=>setAns(a=>({...a,[q.id]:{...(a[q.id]||{}),[p.id]:v}}))}/>
               {p.cond&&p.cond.p && <small className="muted" style={{display:"block",marginTop:4}}>↳ se muestra porque «{p.cond.p}» {p.cond.mode==="neq"?"≠":"="} {p.cond.op}</small>}
@@ -1057,11 +1152,13 @@ function Login({ctx}){
     if(perfil.estado==="pendiente"){ setLoading(false); await supabase.auth.signOut(); return setMsg({k:"info",t:"Tu cuenta está pendiente de aprobación por un Administrador o Supervisor."}); }
     if(perfil.estado==="inactivo"){ setLoading(false); await supabase.auth.signOut(); return setMsg({k:"err",t:"Tu cuenta fue dada de baja. Contacta al Administrador."}); }
     const u={...dbProfileToUser(perfil),email:data.user.email,loginSince:Date.now()};
-    await updateProfile(u.id,{loginSince:u.loginSince});
     const ms=Date.now(),hoy=dayKey();
-    await registrarPrimerLoginDB(u.id,hoy,ms);
-    registrarAccion(u.id,"login",`${u.nombre} (${u.rol}) inició sesión`);
-    await cargarDatosDeSesion(u);
+    registrarAccion(u.id,"login",`${u.nombre} (${u.rol}) inició sesión`); // no bloqueante
+    await Promise.all([
+      updateProfile(u.id,{loginSince:u.loginSince}),
+      registrarPrimerLoginDB(u.id,hoy,ms),
+      cargarDatosDeSesion(u),
+    ]);
     setLoading(false);
     console.log(`[LOGIN] ${u.nombre} (${u.rol}) · ${hoy} ${new Date(ms).toLocaleTimeString("es-SV")} — primer login del día registrado si no existía uno previo.`);
     setSession(u);setView(firstView(u));
@@ -1110,7 +1207,7 @@ function Login({ctx}){
         <h2>Iniciar sesión</h2><p className="sub">Ingresa con tu correo institucional.</p>
         {msg&&<div className={"alert alert-"+(msg.k==="err"?"err":msg.k==="ok"?"ok":"info")}>{msg.t}</div>}
         <div className="field"><label>Correo</label><input className="input" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()} placeholder="usuario@goes.gob.sv"/></div>
-        <div className="field"><label>Contraseña</label><input className="input" type="password" value={pass} onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()} placeholder="••••••"/></div>
+        <div className="field"><label>Contraseña</label><PasswordInput value={pass} onChange={e=>setPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()} placeholder="••••••"/></div>
         <button className="btn btn-primary" disabled={loading} onClick={login}>{loading?"Entrando…":"Entrar"}</button>
         <p className="hint">
           <span className="link" onClick={()=>{setMode("olvide");setMsg(null);setFpEmail(email);}}>¿Olvidaste tu contraseña?</span><br/>
@@ -1121,7 +1218,7 @@ function Login({ctx}){
         {msg&&<div className={"alert alert-"+(msg.k==="err"?"err":"ok")}>{msg.t}</div>}
         <div className="field"><label>Nombre completo</label><input className="input" value={rn} onChange={e=>setRn(e.target.value)}/></div>
         <div className="field"><label>Correo institucional</label><input className="input" value={re} onChange={e=>setRe(e.target.value)} placeholder="usuario@goes.gob.sv"/></div>
-        <div className="field"><label>Contraseña</label><input className="input" type="password" value={rp} onChange={e=>setRp(e.target.value)}/>
+        <div className="field"><label>Contraseña</label><PasswordInput value={rp} onChange={e=>setRp(e.target.value)}/>
           <PasswordChecklist value={rp}/>
         </div>
         <div className="field"><label>Rol solicitado</label><select className="input" value={rr} onChange={e=>setRr(e.target.value)}>{ROLES.map(r=><option key={r}>{r}</option>)}</select></div>
@@ -1174,10 +1271,10 @@ function CambiarPassword({ctx,modo}){
     <div className="login-panel"><div className="login-card">
       <h2>Nueva contraseña</h2>
       {msg&&<div className={"alert alert-"+(msg.k==="err"?"err":"ok")}>{msg.t}</div>}
-      <div className="field"><label>Nueva contraseña</label><input className="input" type="password" value={p1} onChange={e=>setP1(e.target.value)}/>
+      <div className="field"><label>Nueva contraseña</label><PasswordInput value={p1} onChange={e=>setP1(e.target.value)}/>
         <PasswordChecklist value={p1}/>
       </div>
-      <div className="field"><label>Confirmar nueva contraseña</label><input className="input" type="password" value={p2} onChange={e=>setP2(e.target.value)} onKeyDown={e=>e.key==="Enter"&&guardar()}/></div>
+      <div className="field"><label>Confirmar nueva contraseña</label><PasswordInput value={p2} onChange={e=>setP2(e.target.value)} onKeyDown={e=>e.key==="Enter"&&guardar()}/></div>
       <button className="btn btn-primary" disabled={loading} onClick={guardar}>{loading?"Guardando…":"Guardar contraseña"}</button>
       {modo==="recuperacion" && <p className="hint"><span className="link" onClick={async()=>{setRecoveryUserId(null);await supabase.auth.signOut();}}>Cancelar y volver a iniciar sesión</span></p>}
     </div></div>
@@ -1212,11 +1309,11 @@ function CambiarPasswordModal({ctx,onClose}){
 
   return (<Modal title="Cambiar contraseña" onClose={onClose} foot={<><button className="btn btn-ghost" onClick={onClose}>Cancelar</button><button className="btn btn-accent" disabled={loading} onClick={guardar}>{loading?"Guardando…":"Guardar"}</button></>}>
     {msg&&<div className={"alert alert-"+(msg.k==="err"?"err":"ok")} style={{marginTop:0}}>{msg.t}</div>}
-    <div className="field"><label>Contraseña actual</label><input className="input" type="password" value={actual} onChange={e=>setActual(e.target.value)}/></div>
-    <div className="field"><label>Nueva contraseña</label><input className="input" type="password" value={p1} onChange={e=>setP1(e.target.value)}/>
+    <div className="field"><label>Contraseña actual</label><PasswordInput value={actual} onChange={e=>setActual(e.target.value)}/></div>
+    <div className="field"><label>Nueva contraseña</label><PasswordInput value={p1} onChange={e=>setP1(e.target.value)}/>
       <PasswordChecklist value={p1}/>
     </div>
-    <div className="field" style={{marginBottom:0}}><label>Confirmar nueva contraseña</label><input className="input" type="password" value={p2} onChange={e=>setP2(e.target.value)} onKeyDown={e=>e.key==="Enter"&&guardar()}/></div>
+    <div className="field" style={{marginBottom:0}}><label>Confirmar nueva contraseña</label><PasswordInput value={p2} onChange={e=>setP2(e.target.value)} onKeyDown={e=>e.key==="Enter"&&guardar()}/></div>
   </Modal>);
 }
 
@@ -1272,7 +1369,7 @@ function AgentStatusControl({ctx}){
 
 /* ============================ SHELL ============================ */
 function Shell({ctx,toast}){
-  const {session,view,setView,theme,setTheme,setSession,patchUser,filtro,setFiltro,pausa,setPausa,bumpDaily}=ctx;
+  const {session,view,setView,theme,setTheme,setSession,patchUser,filtro,setFiltro,pausa,setPausa,bumpDaily,campaigns}=ctx;
   const can=CAN[session.rol];
   const [cambiarPass,setCambiarPass]=useState(false);
   const logout=async()=>{
@@ -1290,6 +1387,7 @@ function Shell({ctx,toast}){
   const nav=[
     {k:"bandeja",ic:"📞",t:"Bandeja de llamadas",show:can.bandeja},
     {k:"campanas",ic:"🎯",t:"Campañas",show:can.campanas},
+    {k:"borradores",ic:"📝",t:"Borradores",show:can.borradores,count:campaigns.filter(c=>c.estado==="Borrador").length},
     {k:"consulta",ic:"🔎",t:"Consulta y edición",show:can.consulta},
     {k:"equipo",ic:"🧑‍💼",t:"Equipo de agentes",show:can.equipo},
     {k:"dashboard",ic:"📊",t:"Dashboard de avance",show:can.dashboard},
@@ -1297,14 +1395,14 @@ function Shell({ctx,toast}){
     {k:"logs",ic:"📜",t:"Logs de usuarios",show:can.logs},
     {k:"salud",ic:"💚",t:"Salud del sistema",show:can.salud},
   ].filter(x=>x.show);
-  const titles={bandeja:"Bandeja de llamadas",campanas:"Campañas",consulta:"Consulta y edición (inbound)",equipo:"Equipo de agentes",dashboard:"Dashboard de avance",admin:"Administración de usuarios",logs:"Logs de usuarios",salud:"Salud del sistema"};
+  const titles={bandeja:"Bandeja de llamadas",campanas:"Campañas",borradores:"Borradores de campaña",consulta:"Consulta y edición (inbound)",equipo:"Equipo de agentes",dashboard:"Dashboard de avance",admin:"Administración de usuarios",logs:"Logs de usuarios",salud:"Salud del sistema"};
   const withWeek=["bandeja","campanas","consulta","dashboard"].includes(view);
   const initials=session.nombre.split(" ").map(x=>x[0]).slice(0,2).join("");
   return (<div className="shell">
     <aside className="sidebar">
       <div className="brand"><div className="mark">M</div><div><b>Actividades CE</b><span>MINED · Centro de Monitoreo</span></div></div>
       <div className="nav-label">Módulos</div>
-      {nav.map(n=><button key={n.k} className={"nav-item"+(view===n.k?" active":"")} onClick={()=>setView(n.k)}><span className="ico">{n.ic}</span>{n.t}</button>)}
+      {nav.map(n=><button key={n.k} className={"nav-item"+(view===n.k?" active":"")} onClick={()=>setView(n.k)}><span className="ico">{n.ic}</span>{n.t}{n.count!=null && <span style={{marginLeft:4}}>({n.count})</span>}</button>)}
       <div className="spacer"/>
       <div className="me"><div className="avatar">{initials}</div><div className="grow"><b>{session.nombre}</b><span>{session.rol}</span></div></div>
       <button className="nav-item" style={{marginTop:8}} onClick={()=>setCambiarPass(true)}><span className="ico">🔑</span>Cambiar contraseña</button>
@@ -1326,6 +1424,7 @@ function Shell({ctx,toast}){
       <div className="content">
         {view==="bandeja" && <Bandeja ctx={ctx}/>}
         {view==="campanas" && <Campanas ctx={ctx}/>}
+        {view==="borradores" && <Borradores ctx={ctx}/>}
         {view==="consulta" && <Consulta ctx={ctx}/>}
         {view==="equipo" && <Equipo ctx={ctx}/>}
         {view==="dashboard" && <Dashboard ctx={ctx}/>}
@@ -1444,7 +1543,9 @@ function CallPanel({ctx,camp,school,rec,onClose}){
 
   const iniciarEdicion=i=>{ setActualAns(acts[i]||{}); setEditIdx(i); };
   const cancelarEdicion=()=>{ setActualAns({}); setEditIdx(null); };
+  const faltantesActual=preguntasObligatoriasFaltantes(preguntas,actualAns);
   const agregarActividad=()=>{
+    if(faltantesActual.length){ notify("Faltan preguntas obligatorias por responder: "+faltantesActual.join(", "),"err"); return; }
     if(editIdx!=null){ setActs(p=>p.map((x,i)=>i===editIdx?actualAns:x)); }
     else{ setActs(p=>[...p,actualAns]); }
     setActualAns({});setEditIdx(null);
@@ -1539,8 +1640,9 @@ function CallPanel({ctx,camp,school,rec,onClose}){
       <div className="card card-pad" style={{background:"var(--surface-2)",marginTop:6}}>
         <div className="section-title" style={{marginTop:0}}>{editIdx!=null?"Editar actividad":"Nueva actividad"}</div>
         <PreguntasEditor preguntas={preguntas} ans={actualAns} setAns={setActualAns}/>
+        {faltantesActual.length>0 && <div className="alert alert-err" style={{marginBottom:8}}>Faltan preguntas obligatorias: {faltantesActual.join(", ")}</div>}
         <div style={{display:"flex",gap:8,marginTop:preguntas.length?4:0}}>
-          <button className="btn btn-primary btn-sm" onClick={agregarActividad}>{editIdx!=null?"Guardar cambios":"Guardar respuesta"}</button>
+          <button className="btn btn-primary btn-sm" disabled={faltantesActual.length>0} onClick={agregarActividad}>{editIdx!=null?"Guardar cambios":"Guardar respuesta"}</button>
           {editIdx!=null&&<button className="btn btn-ghost btn-sm" onClick={cancelarEdicion}>Cancelar edición</button>}
         </div>
       </div>
@@ -1558,7 +1660,7 @@ function Campanas({ctx}){
   const [cerrModal,setCerrModal]=useState(null); // campaña a gestionar cerrados
   const [editPreg,setEditPreg]=useState(null);   // campaña a editar preguntas
   const [verTodas,setVerTodas]=useState(false);
-  const lista=campaigns.filter(c=>verTodas||overlaps(c.fechaDesde,c.fechaHasta,filtro.desde,filtro.hasta));
+  const lista=campaigns.filter(c=>c.estado!=="Borrador" && (verTodas||overlaps(c.fechaDesde,c.fechaHasta,filtro.desde,filtro.hasta)));
   const agName=id=>(users.find(u=>u.id===id)||{}).nombre||"—";
 
   const toggleEstado=c=>{
@@ -1601,6 +1703,61 @@ function Campanas({ctx}){
     {reasg && <ReassignModal ctx={ctx} camp={reasg} onClose={()=>setReasg(null)}/>}
     {cerrModal && <CerradosModal ctx={ctx} camp={cerrModal} onClose={()=>setCerrModal(null)}/>}
     {editPreg && <EditQuestionsModal ctx={ctx} camp={editPreg} onClose={()=>setEditPreg(null)}/>}
+  </div>);
+}
+
+/* ---- Borradores de campaña (Administrador, Supervisor, Team Leader) ---- */
+function Borradores({ctx}){
+  const {campaigns,setCampaigns,users,session,notify}=ctx;
+  const [continuar,setContinuar]=useState(null); // borrador a continuar en el asistente
+  const [confirmarBorrar,setConfirmarBorrar]=useState(null); // borrador a descartar
+  const borradores=[...campaigns.filter(c=>c.estado==="Borrador")].sort((a,b)=>(b.actualizadoEn||0)-(a.actualizadoEn||0));
+  const nombreDe=id=>(users.find(u=>u.id===id)||{}).nombre||"—";
+  const hace=ms=>{
+    if(!ms) return "—";
+    const seg=Math.floor((Date.now()-ms)/1000);
+    if(seg<60) return "hace un momento";
+    if(seg<3600) return `hace ${Math.floor(seg/60)} min`;
+    if(seg<86400) return `hace ${Math.floor(seg/3600)} h`;
+    return `hace ${Math.floor(seg/86400)} día(s)`;
+  };
+  const descartar=async()=>{
+    const b=confirmarBorrar;
+    setCampaigns(p=>p.filter(c=>c.id!==b.id));
+    if(supabase) await eliminarBorradorDB(b.id);
+    registrarAccion(session.id,"descartar_borrador",`${session.nombre} descartó el borrador «${b.titulo||"(sin título)"}»`);
+    notify("Borrador descartado.");
+    setConfirmarBorrar(null);
+  };
+
+  return (<div className="grid">
+    <div><div className="section-title" style={{margin:0}}>Borradores de campaña</div><small className="muted">Campañas a medio crear, guardadas automáticamente. Cualquier Administrador, Supervisor o Team Leader puede continuarlas o descartarlas — no solo quien las empezó.</small></div>
+
+    {borradores.length===0 && <div className="card"><div className="empty" style={{padding:30}}>No hay borradores pendientes.</div></div>}
+
+    {borradores.map(b=>(
+      <div key={b.id} className="card card-pad" style={{display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
+        <div className="grow">
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <b>{b.titulo&&b.titulo.trim()?b.titulo:"(Sin título todavía)"}</b>
+            <span className="tag" style={{background:"var(--warn-bg)",color:"var(--warn)"}}>📝 Borrador</span>
+          </div>
+          <small className="muted" style={{display:"block",marginTop:4}}>
+            Iniciado por {nombreDe(b.creadoPor)} · guardado {hace(b.actualizadoEn)}
+            {b.preguntas&&b.preguntas.length ? ` · ${b.preguntas.length} pregunta(s) configurada(s)` : ""}
+          </small>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <button className="btn btn-primary btn-sm" onClick={()=>setContinuar(b)}>Continuar</button>
+          <button className="btn btn-ghost btn-sm" style={{color:"var(--danger)"}} onClick={()=>setConfirmarBorrar(b)}>Descartar</button>
+        </div>
+      </div>
+    ))}
+
+    {continuar && <CampaignWizard ctx={ctx} borradorInicial={continuar} onClose={()=>setContinuar(null)}/>}
+    {confirmarBorrar && <Modal title="Descartar borrador" onClose={()=>setConfirmarBorrar(null)} foot={<><button className="btn btn-ghost" onClick={()=>setConfirmarBorrar(null)}>Cancelar</button><button className="btn btn-danger" onClick={descartar}>Sí, descartar</button></>}>
+      <p style={{marginTop:0}}>¿Seguro que quieres descartar el borrador «{confirmarBorrar.titulo&&confirmarBorrar.titulo.trim()?confirmarBorrar.titulo:"(sin título)"}»? Esta acción no se puede deshacer.</p>
+    </Modal>}
   </div>);
 }
 
@@ -1731,7 +1888,7 @@ function ReassignModal({ctx,camp,onClose}){
     setRecords(p=>p.map(r=> (r.campaignId===camp.id && selected.includes(r.codigo)) ? {...r,agentId:nuevoParcial[r.codigo]||r.agentId} : r));
     if(supabase){
       await agregarAgentesACampanaDB(camp.id,agentIdsNuevos);
-      await Promise.all(selected.map(codigo=>upsertRegistroDB(camp.id,codigo,{agentId:nuevoParcial[codigo]})));
+      await actualizarRegistrosMasivoDB(camp.id,selected.map(codigo=>({codigo,agentId:nuevoParcial[codigo]})));
     }
     notify(`Reasignados ${selected.length} centro(s) entre ${destinoIds.length} agente(s), de forma equitativa.`);
     registrarAccion(session.id,"reasignar",`${session.nombre} reasignó ${selected.length} centro(s) de «${camp.titulo}» entre ${destinoIds.length} agente(s)`);
@@ -1843,7 +2000,7 @@ function CerradosModal({ctx,camp,onClose}){
     const nuevoParcial=buildAssign(selected,destinoAgentes);
     setCampaigns(p=>p.map(c=>c.id===camp.id?{...c,assign:{...getAssign(c),...nuevoParcial}}:c));
     setRecords(p=>p.map(r=>(r.campaignId===camp.id&&selected.includes(r.codigo))?{...r,agentId:nuevoParcial[r.codigo],estado:"Pendiente",intentos:0,wrong:[]}:r));
-    if(supabase) await Promise.all(selected.map(codigo=>upsertRegistroDB(camp.id,codigo,{agentId:nuevoParcial[codigo],estado:"Pendiente",intentos:0,wrong:[]})));
+    if(supabase) await actualizarRegistrosMasivoDB(camp.id,selected.map(codigo=>({codigo,agentId:nuevoParcial[codigo],estado:"Pendiente",intentos:0,wrong:[]})));
     registrarAccion(session.id,"reasignar",`${session.nombre} reasignó ${selected.length} centro(s) cerrado(s) en «${camp.titulo}»`);
     notify(`${selected.length} centro(s) reasignado(s) y reactivado(s) de forma equitativa.`);
     onClose();
@@ -1966,6 +2123,10 @@ function PreguntasBuilder({preguntas,setPreguntas}){
             <select className="input" style={{width:"auto"}} value={q.tipo} onChange={e=>setTipoPregunta(i,e.target.value)}>
               {Q_TIPOS.map(t=><option key={t.k} value={t.k}>{t.t}</option>)}
             </select>
+            <label className="checkline" style={{border:"none",padding:0,gap:5,marginLeft:6}}>
+              <input type="checkbox" checked={!!q.obligatoria} onChange={e=>updQ(i,{obligatoria:e.target.checked})}/>
+              <small className="muted">Obligatoria (el agente no puede guardar sin responderla)</small>
+            </label>
           </div>
 
           {q.tipo==="sino" && <div style={{marginBottom:8}}>
@@ -2017,6 +2178,10 @@ function PreguntasBuilder({preguntas,setPreguntas}){
                   <select className="input" style={{width:"auto"}} value={p.tipo} onChange={e=>setTipoParte(i,pi,e.target.value)}>
                     {Q_TIPOS_SIMPLES.map(t=><option key={t.k} value={t.k}>{t.t}</option>)}
                   </select>
+                  <label className="checkline" style={{border:"none",padding:0,gap:5}}>
+                    <input type="checkbox" checked={!!p.obligatoria} onChange={e=>updParte(i,pi,{obligatoria:e.target.checked})}/>
+                    <small className="muted">Obligatoria</small>
+                  </label>
                   <button className="btn btn-ghost btn-sm" onClick={()=>duplicarParte(i,pi)}>⧉ Duplicar</button>
                   <button className="btn btn-danger btn-sm" onClick={()=>delParte(i,pi)}>✕</button>
                 </div>
@@ -2112,27 +2277,50 @@ function EditQuestionsModal({ctx,camp,onClose}){
 }
 
 /* ---- Asistente de creación de campaña ---- */
-function CampaignWizard({ctx,onClose}){
+function CampaignWizard({ctx,onClose,borradorInicial}){
   const {schools,setSchools,users,campaigns,setCampaigns,filtro,session,notify}=ctx;
-  const [step,setStep]=useState(0);
+  const bd=borradorInicial&&borradorInicial.borradorEstado||{};
+  const [step,setStep]=useState(bd.step||0);
   const steps=["Datos","Preguntas","Centros escolares","Agentes","Resumen"];
-  const [titulo,setTitulo]=useState("");
-  const [objetivo,setObjetivo]=useState("");
-  const [fDesde,setFDesde]=useState(filtro.desde);
-  const [fHasta,setFHasta]=useState(filtro.hasta);
-  const [maxIntentos,setMaxIntentos]=useState(DEFAULT_MAX_INTENTOS);
+  const [titulo,setTitulo]=useState(borradorInicial?borradorInicial.titulo:"");
+  const [objetivo,setObjetivo]=useState(borradorInicial?borradorInicial.objetivo:"");
+  const [fDesde,setFDesde]=useState(borradorInicial?borradorInicial.fechaDesde:filtro.desde);
+  const [fHasta,setFHasta]=useState(borradorInicial?borradorInicial.fechaHasta:filtro.hasta);
+  const [maxIntentos,setMaxIntentos]=useState(borradorInicial?borradorInicial.maxIntentos:DEFAULT_MAX_INTENTOS);
   const modoFecha=fDesde===fHasta?"dia":"periodo";
   const setModoFecha=m=>{ if(m==="dia") setFHasta(fDesde); else if(fHasta===fDesde) setFHasta(addDays(fDesde,6)); };
   // preguntas de la campaña (100% parametrizables; reemplazan cualquier esquema fijo de "actividad")
-  const [preguntas,setPreguntas]=useState([blankPregunta([])]);
-  const [selMode,setSelMode]=useState("todos");
-  const [manual,setManual]=useState([]);
-  const [grupo,setGrupo]=useState({tipo:"departamento",valor:DEPTOS[0]});
+  const [preguntas,setPreguntas]=useState(borradorInicial&&borradorInicial.preguntas&&borradorInicial.preguntas.length?borradorInicial.preguntas:[blankPregunta([])]);
+  const [selMode,setSelMode]=useState(bd.selMode||"todos");
+  const [manual,setManual]=useState(bd.manual||[]);
+  const [grupo,setGrupo]=useState(bd.grupo||{tipo:"departamento",valor:DEPTOS[0]});
   const [uploaded,setUploaded]=useState([]);const [upInfo,setUpInfo]=useState(null);
   // solo agentes Outbound, activos y disponibles (Inbound y SDP no reciben llamadas de campaña)
   const pool=users.filter(u=>u.rol==="Agente"&&u.estado==="activo"&&u.skill!=="Inbound"&&u.skill!=="SDP"&&u.disponible!==false);
-  const [turno,setTurno]=useState("Todos");
-  const [agSel,setAgSel]=useState(pool.map(a=>a.id));
+  const [turno,setTurno]=useState(bd.turno||"Todos");
+  const [agSel,setAgSel]=useState(bd.agSel||pool.map(a=>a.id));
+
+  // ---- borrador autoguardado en Supabase (para que Admin/Supervisor/Team Leader puedan continuarlo desde cualquier lugar) ----
+  const [borradorId,setBorradorId]=useState(borradorInicial?borradorInicial.id:null);
+  const [continuandoBorrador]=useState(!!borradorInicial);
+  const primerRenderRef=useRef(true);
+  useEffect(()=>{
+    if(primerRenderRef.current){ primerRenderRef.current=false; return; } // no autoguardar antes de que el usuario toque algo
+    if(!supabase) return;
+    const t=setTimeout(async()=>{
+      const nuevoId=await guardarBorradorDB({
+        titulo,objetivo,fechaDesde:fDesde,fechaHasta:fHasta,maxIntentos,preguntas,
+        estadoAsistente:{selMode,manual,grupo,turno,agSel,step},creadoPor:session.id,
+      },borradorId);
+      if(nuevoId && !borradorId){
+        setBorradorId(nuevoId);
+        setCampaigns(p=>[...p,{id:nuevoId,titulo,objetivo,fechaDesde:fDesde,fechaHasta:fHasta,maxIntentos,preguntas,estado:"Borrador",pausada:false,agentIds:[],schoolCodes:[],assign:{},creadoPor:session.id,actualizadoEn:Date.now()}]);
+      } else if(nuevoId){
+        setCampaigns(p=>p.map(c=>c.id===nuevoId?{...c,titulo,objetivo,fechaDesde:fDesde,fechaHasta:fHasta,maxIntentos,preguntas,actualizadoEn:Date.now()}:c));
+      }
+    },800);
+    return ()=>clearTimeout(t);
+  },[titulo,objetivo,fDesde,fHasta,maxIntentos,preguntas,selMode,manual,grupo,turno,agSel,step]);
 
   const selectedSchools=useMemo(()=>{
     if(selMode==="archivo")return uploaded;
@@ -2153,17 +2341,17 @@ function CampaignWizard({ctx,onClose}){
   const launch=async()=>{
     const codes=selectedSchools.map(s=>s.codigo);const agentIds=finalAgents.map(a=>a.id);
     if(selMode==="archivo"&&uploaded.length){setSchools(prev=>{const map={};prev.forEach(s=>map[s.codigo]=s);uploaded.forEach(s=>map[s.codigo]={...map[s.codigo],...s});return Object.values(map);});}
-    const camp={id:uid("c"),titulo:titulo||"Campaña sin título",objetivo,fechaDesde:fDesde,fechaHasta:fHasta,maxIntentos:Number(maxIntentos)||DEFAULT_MAX_INTENTOS,
+    const camp={id:borradorId||uid("c"),titulo:titulo||"Campaña sin título",objetivo,fechaDesde:fDesde,fechaHasta:fHasta,maxIntentos:Number(maxIntentos)||DEFAULT_MAX_INTENTOS,
       preguntas:preguntas.filter(q=>q.texto).map(limpiaPregunta),
       schoolCodes:codes,agentIds,assign:buildAssign(codes,agentIds),estado:"En curso",pausada:false};
     if(supabase){
       setCreando(true);
-      const idReal=await crearCampanaDB(camp);
+      const idReal=await crearCampanaDB(camp,borradorId);
       setCreando(false);
       if(!idReal) return notify("No se pudo crear la campaña en la base de datos.","err");
       camp.id=idReal;
     }
-    setCampaigns(p=>[...p,camp]); // NO finaliza otras: varias en paralelo
+    setCampaigns(p=> borradorId?p.map(c=>c.id===borradorId?camp:c):[...p,camp]); // si venía de un borrador, reemplaza esa misma fila
     registrarAccion(session.id,"crear_campana",`${session.nombre} creó la campaña «${camp.titulo}» (${codes.length} centros, ${agentIds.length} agentes)`);
     notify(`Campaña creada · ${codes.length} centros entre ${agentIds.length} agentes`);onClose();
   };
@@ -2176,6 +2364,7 @@ function CampaignWizard({ctx,onClose}){
   </>;
   return (<Modal title="Nueva campaña" onClose={onClose} wide foot={foot}>
     <div className="stepper">{steps.map((s,i)=><div key={s} className={"step"+(i===step?" on":i<step?" done":"")}><b>{i<step?"✓":i+1}</b>{s}</div>)}</div>
+    {continuandoBorrador && <small className="muted" style={{display:"block",marginBottom:10}}>💾 Continuando desde un borrador guardado.</small>}
 
     {step===0 && <div>
       <div className="field"><label>Título de la campaña</label><input className="input" value={titulo} onChange={e=>setTitulo(e.target.value)} placeholder="Ej. Actividades semanales de CE"/></div>
@@ -2264,12 +2453,29 @@ function CampaignWizard({ctx,onClose}){
 
 /* ============================ CONSULTA Y EDICIÓN (INBOUND) ============================ */
 function Consulta({ctx}){
-  const {schools,filtro}=ctx;
+  const {schools,campaigns,filtro}=ctx;
   const [q,setQ]=useState("");
   const [sel,setSel]=useState(null);
-  const res=useMemo(()=>{const t=_norm(q);if(!t)return schools.slice(0,8);return schools.filter(s=>_norm(s.nombre).includes(t)||_norm(s.codigo).includes(t)||_norm(s.departamento).includes(t)||_norm(s.municipio).includes(t)).slice(0,30);},[q,schools]);
+  const [campSel,setCampSel]=useState("todas");
+  const campanasOrdenadas=useMemo(()=>[...campaigns].sort((a,b)=>a.titulo.localeCompare(b.titulo,"es")),[campaigns]);
+  const res=useMemo(()=>{
+    let base=schools;
+    if(campSel!=="todas"){
+      const camp=campaigns.find(c=>c.id===campSel);
+      base=camp?schools.filter(s=>camp.schoolCodes.includes(s.codigo)):[];
+    }
+    const t=_norm(q);
+    if(!t)return base.slice(0,8);
+    return base.filter(s=>_norm(s.nombre).includes(t)||_norm(s.codigo).includes(t)||_norm(s.departamento).includes(t)||_norm(s.municipio).includes(t)).slice(0,30);
+  },[q,schools,campSel,campaigns]);
   return (<div className="grid" style={{gridTemplateColumns:"360px 1fr",alignItems:"start"}}>
     <div className="grid">
+      <div className="field" style={{margin:0}}><label>Campaña</label>
+        <select className="input" value={campSel} onChange={e=>setCampSel(e.target.value)}>
+          <option value="todas">Todas las campañas</option>
+          {campanasOrdenadas.map(c=><option key={c.id} value={c.id}>{c.titulo}</option>)}
+        </select>
+      </div>
       <div className="searchbar"><span>🔎</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Nombre, código, departamento o municipio"/></div>
       <div className="card"><div className="toggle-list">
         {res.map(s=>(<button key={s.codigo} className="row-item" style={{textAlign:"left",background:sel===s.codigo?"var(--surface-2)":"none"}} onClick={()=>setSel(s.codigo)}>
@@ -2277,16 +2483,16 @@ function Consulta({ctx}){
         {res.length===0&&<div className="empty" style={{padding:24}}>Sin coincidencias.</div>}
       </div></div>
     </div>
-    {sel?<InboundCE ctx={ctx} codigo={sel}/>:<div className="card card-pad"><div className="empty" style={{padding:"40px 10px"}}><div className="big">🔎</div>Busca y selecciona un Centro Educativo para consultar o editar sus actividades de {rangeLabel(filtro.desde,filtro.hasta)}.</div></div>}
+    {sel?<InboundCE ctx={ctx} codigo={sel} campaniaId={campSel!=="todas"?campSel:null}/>:<div className="card card-pad"><div className="empty" style={{padding:"40px 10px"}}><div className="big">🔎</div>Busca y selecciona un Centro Educativo para consultar o editar sus actividades de {rangeLabel(filtro.desde,filtro.hasta)}.</div></div>}
   </div>);
 }
-function InboundCE({ctx,codigo}){
+function InboundCE({ctx,codigo,campaniaId}){
   const {schools,campaigns,records,setRecords,filtro,session,notify}=ctx;
   const can=CAN[session.rol];
   const s=schools.find(x=>x.codigo===codigo);
-  const campsRango=campaigns.filter(c=>overlaps(c.fechaDesde,c.fechaHasta,filtro.desde,filtro.hasta));
+  const campsRango=campaniaId?campaigns.filter(c=>c.id===campaniaId):campaigns.filter(c=>overlaps(c.fechaDesde,c.fechaHasta,filtro.desde,filtro.hasta));
   const recs=records.filter(r=>r.codigo===codigo && campsRango.some(c=>c.id===r.campaignId));
-  // campaña destino para agregar (si no hay registro): primera campaña del rango que incluya el CE
+  // campaña destino para agregar (si no hay registro): la elegida en el filtro, o la primera del rango que incluya el CE
   const campDestino=campsRango.find(c=>c.schoolCodes.includes(codigo));
   const [edit,setEdit]=useState(null); // {recId, idx}
   const [editAns,setEditAns]=useState({});
@@ -2320,6 +2526,8 @@ function InboundCE({ctx,codigo}){
   };
   const crearRegistro=()=>{
     if(!campDestino)return notify("Este centro no pertenece a ninguna campaña del rango seleccionado.","err");
+    const faltantes=preguntasObligatoriasFaltantes(campDestino.preguntas||[],nuevaAns);
+    if(faltantes.length) return notify("Faltan preguntas obligatorias por responder: "+faltantes.join(", "),"err");
     const agentIdFinal=(getAssign(campDestino)[codigo])||session.id;
     const nr={id:uid("rec"),campaignId:campDestino.id,codigo,agentId:agentIdFinal,estado:"Contactado",intentos:0,actividades:[nuevaAns],wrong:[],dur:0,updatedMs:Date.now()};
     setRecords(p=>{ const existe=p.some(r=>r.campaignId===campDestino.id&&r.codigo===codigo); return existe?p.map(r=>(r.campaignId===campDestino.id&&r.codigo===codigo)?nr:r):[...p,nr]; });
@@ -2340,8 +2548,9 @@ function InboundCE({ctx,codigo}){
       {puedeAgregar && campDestino && (adding
         ? <div className="card card-pad" style={{background:"var(--surface-2)",marginTop:10}}>
             <PreguntasEditor preguntas={campDestino.preguntas||[]} ans={nuevaAns} setAns={setNuevaAns}/>
+            {(()=>{const f=preguntasObligatoriasFaltantes(campDestino.preguntas||[],nuevaAns);return f.length>0 && <div className="alert alert-err" style={{marginBottom:8}}>Faltan preguntas obligatorias: {f.join(", ")}</div>;})()}
             <div style={{display:"flex",gap:8,marginTop:6}}>
-              <button className="btn btn-primary btn-sm" onClick={crearRegistro}>Guardar respuesta</button>
+              <button className="btn btn-primary btn-sm" disabled={preguntasObligatoriasFaltantes(campDestino.preguntas||[],nuevaAns).length>0} onClick={crearRegistro}>Guardar respuesta</button>
               <button className="btn btn-ghost btn-sm" onClick={()=>{setAdding(false);setNuevaAns({});}}>Cancelar</button>
             </div>
           </div>
@@ -2361,8 +2570,9 @@ function InboundCE({ctx,codigo}){
         {(r.actividades||[]).map((a,i)=>(edit&&edit.recId===r.id&&edit.idx===i
           ? <div key={i} className="card card-pad" style={{background:"var(--surface-2)",marginBottom:10}}>
               <PreguntasEditor preguntas={preguntas} ans={editAns} setAns={setEditAns}/>
+              {(()=>{const f=preguntasObligatoriasFaltantes(preguntas,editAns);return f.length>0 && <div className="alert alert-err" style={{marginBottom:8}}>Faltan preguntas obligatorias: {f.join(", ")}</div>;})()}
               <div style={{display:"flex",gap:8,marginTop:6}}>
-                <button className="btn btn-primary btn-sm" onClick={()=>guardarAct(r.id,i)}>Guardar cambios</button>
+                <button className="btn btn-primary btn-sm" disabled={preguntasObligatoriasFaltantes(preguntas,editAns).length>0} onClick={()=>guardarAct(r.id,i)}>Guardar cambios</button>
                 <button className="btn btn-ghost btn-sm" onClick={()=>{setEdit(null);setEditAns({});}}>Cancelar</button>
               </div>
             </div>
@@ -2969,8 +3179,11 @@ function CrearUsuarioModal({ctx,onClose}){
       const out=await res.json();
       setLoading(false);
       if(!res.ok||out.error) return setErr(out.error||"No se pudo crear el usuario.");
-      const nuevos=await fetchProfiles();
-      setUsers(nuevos);
+      const nuevoPerfil={
+        id:out.id, nombre:nombre.trim(), email:email.trim(), rol, estado:"activo", debeCambiarPassword:true,
+        ...(rol==="Agente"?{skill:"Outbound",turno:CURRENT_SHIFT,disponible:true,habilitadoFueraTurno:false,habilitadoLlamadas:true,opStatus:"Activo",statusSince:null,loginSince:null}:{}),
+      };
+      setUsers(p=>[...p,nuevoPerfil]);
       registrarAccion(session.id,"crear_usuario_admin",`${session.nombre} creó la cuenta de ${nombre.trim()} (${rol})`);
       notify(`Usuario creado: ${nombre.trim()} (${rol})`);onClose();
     }catch(e){
@@ -2981,7 +3194,7 @@ function CrearUsuarioModal({ctx,onClose}){
   return (<Modal title="Crear usuario" onClose={onClose} foot={<><button className="btn btn-ghost" onClick={onClose}>Cancelar</button><button className="btn btn-accent" disabled={loading} onClick={crear}>{loading?"Creando…":"Crear usuario"}</button></>}>
     <div className="field"><label>Nombre completo</label><input className="input" value={nombre} onChange={e=>setNombre(e.target.value)}/></div>
     <div className="field"><label>Correo institucional</label><input className="input" value={email} onChange={e=>setEmail(e.target.value)} placeholder="usuario@goes.gob.sv"/></div>
-    <div className="field"><label>Contraseña temporal</label><input className="input" type="password" value={pass} onChange={e=>setPass(e.target.value)}/>
+    <div className="field"><label>Contraseña temporal</label><PasswordInput value={pass} onChange={e=>setPass(e.target.value)}/>
       <PasswordChecklist value={pass}/>
     </div>
     <div className="field"><label>Rol</label><select className="input" value={rol} onChange={e=>setRol(e.target.value)}>{ROLES.map(r=><option key={r}>{r}</option>)}</select></div>
