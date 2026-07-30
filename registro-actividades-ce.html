@@ -64,6 +64,36 @@
   /* ---------- Login ---------- */
   .login-wrap{min-height:100%;display:grid;grid-template-columns:1.05fr .95fr}
   @media(max-width:860px){.login-wrap{grid-template-columns:1fr}.login-hero{padding:32px 24px 26px;min-height:auto}.login-hero h1{font-size:30px}.login-hero .tan-strip{height:5px}}
+
+  /* ---- pantalla de login: tarjeta de vidrio con borde que se ilumina ---- */
+  .login-wrap-glow{
+    min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px;position:relative;overflow:hidden;
+    background:
+      radial-gradient(720px 520px at 12% 8%, color-mix(in srgb,var(--inst-tan) 40%,transparent), transparent 60%),
+      radial-gradient(760px 560px at 88% 92%, color-mix(in srgb,var(--accent) 22%,transparent), transparent 58%),
+      radial-gradient(1000px 760px at 50% 100%, color-mix(in srgb,var(--navy-2) 65%,transparent), transparent 62%),
+      linear-gradient(160deg,var(--navy),var(--inst-slate));
+  }
+  .login-glow-card{
+    position:relative;width:100%;max-width:420px;
+    background:color-mix(in srgb,var(--surface) 95%,transparent);
+    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+    border-radius:26px;padding:38px 34px 26px;
+    border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);
+    animation:loginGlow 3.2s ease-in-out infinite;
+  }
+  @keyframes loginGlow{
+    0%,100%{box-shadow:0 0 16px 1px color-mix(in srgb,var(--accent) 45%,transparent), 0 0 44px 6px color-mix(in srgb,var(--accent) 18%,transparent), 0 25px 70px rgba(0,0,0,.35);}
+    50%{box-shadow:0 0 30px 4px color-mix(in srgb,var(--accent) 75%,transparent), 0 0 76px 16px color-mix(in srgb,var(--accent) 32%,transparent), 0 25px 70px rgba(0,0,0,.35);}
+  }
+  @media(prefers-reduced-motion:reduce){.login-glow-card{animation:none;box-shadow:0 0 20px 2px color-mix(in srgb,var(--accent) 55%,transparent), 0 25px 70px rgba(0,0,0,.35)}}
+  .login-glow-card .crest-mini{display:flex;flex-direction:column;align-items:center;gap:9px;margin-bottom:20px;text-align:center}
+  .login-glow-card .crest-mini .mark{width:54px;height:54px;border-radius:16px;background:linear-gradient(150deg,var(--navy),var(--navy-2));color:#fff;display:grid;place-items:center;font-family:"Space Grotesk";font-weight:700;font-size:22px;box-shadow:0 10px 24px rgba(17,30,96,.35)}
+  .login-glow-card .crest-mini small{color:var(--text-dim);font-size:11.5px;font-weight:600;letter-spacing:.02em}
+  .login-glow-card h1{font-size:20px;text-align:center;margin:0 0 22px;line-height:1.3}
+  .login-glow-card .foot-mini{margin-top:16px;text-align:center;font-size:11px;color:var(--text-faint);display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
+  .login-glow-card .foot-mini .ver{background:var(--surface-2);border:1px solid var(--border);border-radius:20px;padding:2px 9px;font-family:var(--mono)}
+  @media(max-width:480px){.login-glow-card{padding:28px 20px 20px;border-radius:20px}}
   .login-hero{
     background:
       radial-gradient(720px 420px at 100% 0%, color-mix(in srgb,var(--inst-tan) 22%, transparent), transparent 62%),
@@ -135,6 +165,9 @@
   .nav-item:hover{background:rgba(255,255,255,.07);color:#fff}
   .nav-item.active{background:rgba(242,169,0,.14);color:#fff;box-shadow:inset 2px 0 0 var(--accent)}
   .nav-item .ico{width:18px;text-align:center;opacity:.9}
+  .alerta-dot{width:9px;height:9px;border-radius:50%;background:var(--danger);margin-left:auto;flex:none;animation:alertaBlink 1.1s ease-in-out infinite;box-shadow:0 0 6px 1px var(--danger)}
+  @keyframes alertaBlink{0%,100%{opacity:1}50%{opacity:.25}}
+  @media(prefers-reduced-motion:reduce){.alerta-dot{animation:none}}
   .sidebar .spacer{flex:1}
   .me{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:rgba(255,255,255,.05)}
   .avatar{width:32px;height:32px;border-radius:8px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:700;font-size:13px;flex:none}
@@ -273,7 +306,7 @@
 const {useState,useEffect,useMemo,useRef} = React;
 
 /* Número de versión mostrado en la barra lateral. Súbelo con cada entrega. */
-const APP_VERSION = "1.5";
+const APP_VERSION = "1.6";
 
 /* ============================ SUPABASE (conexión real) ============================
    Project URL y Publishable key: son seguras de tener aquí, a la vista, en el
@@ -1145,7 +1178,7 @@ const App=()=>{
   };
 
   const ctx={theme,setTheme,users,setUsers,patchUser,schools,setSchools,campaigns,setCampaigns,records,setRecords,session,setSession,view,setView,filtro,setFiltro,pausa,setPausa,notify,dailyLog,setDailyLog,bumpDaily,limites,setLimites,auxHabilitados,setAuxHabilitados,auxUltimoCambio,toggleAuxiliar,recoveryUserId,setRecoveryUserId,cargarDatosDeSesion};
-  if(cargandoSesion) return <div className="login-wrap"><div className="login-panel"><div className="login-card"><p className="sub">Cargando…</p></div></div></div>;
+  if(cargandoSesion) return <div className="login-wrap-glow"><div className="login-glow-card" style={{textAlign:"center"}}><div className="crest-mini"><div className="mark">M</div></div><p className="sub">Cargando…</p></div></div>;
   if(recoveryUserId) return <CambiarPassword ctx={ctx} modo="recuperacion"/>;
   if(!session) return <Login ctx={ctx}/>;
   if(session.debeCambiarPassword) return <CambiarPassword ctx={ctx} modo="primerIngreso"/>;
@@ -1209,17 +1242,13 @@ function Login({ctx}){
     setMsg({k:"ok",t:"Si ese correo tiene una cuenta, te enviamos un enlace para crear una nueva contraseña. Revisa tu bandeja de entrada (y spam)."});
   };
 
-  return (<div className="login-wrap">
-    <div className="login-hero">
-      <div className="tan-strip"/>
-      <div className="crest"><div className="mark">M</div>Ministerio de Educación · El Salvador</div>
-      <div>
-        <h1>Plataforma para gestión de llamadas</h1>
+  return (<div className="login-wrap-glow">
+    <div className="login-glow-card">
+      <div className="crest-mini">
+        <div className="mark">M</div>
+        <small>MINISTERIO DE EDUCACIÓN · EL SALVADOR</small>
       </div>
-      <div className="foot"><span>Acceso restringido a personal autorizado · GOES 2026</span><span className="ver mono">V{APP_VERSION}</span></div>
-      <div className="ticker mono">12345 · Contactado · 3 actividades — 12348 · Llamar nuevamente — 12350 · Contactado · 1 actividad — 12347 · No contestó —</div>
-    </div>
-    <div className="login-panel"><div className="login-card">
+      <h1>Plataforma para gestión de llamadas</h1>
       {mode==="login"&&<>
         <h2>Iniciar sesión</h2><p className="sub">Ingresa con tu correo institucional.</p>
         {msg&&<div className={"alert alert-"+(msg.k==="err"?"err":msg.k==="ok"?"ok":"info")}>{msg.t}</div>}
@@ -1250,7 +1279,8 @@ function Login({ctx}){
         <p className="hint"><span className="link" onClick={()=>{setMode("login");setMsg(null);}}>Volver a iniciar sesión</span></p>
         <small className="muted" style={{display:"block",marginTop:8}}>El enlace te traerá de vuelta a esta misma página para elegir tu nueva contraseña. Si la app aún no está publicada en una URL fija (por ejemplo GitHub Pages), este enlace podría no funcionar correctamente.</small>
       </>}
-    </div></div>
+      <div className="foot-mini">Acceso restringido a personal autorizado · GOES 2026 <span className="ver mono">V{APP_VERSION}</span></div>
+    </div>
   </div>);
 }
 
@@ -1278,15 +1308,14 @@ function CambiarPassword({ctx,modo}){
     else { registrarAccion(session.id,"cambiar_password","Contraseña cambiada en el primer ingreso"); setSession(s=>({...s,debeCambiarPassword:false})); }
   };
 
-  return (<div className="login-wrap">
-    <div className="login-hero">
-      <div className="crest"><div className="mark">M</div>Ministerio de Educación · El Salvador</div>
-      <div><h1>{modo==="primerIngreso"?"Configura tu nueva contraseña":"Restablece tu contraseña"}</h1>
-        <p className="lead">{modo==="primerIngreso"?"Por seguridad, debes cambiar tu contraseña antes de continuar.":"Elige una nueva contraseña para tu cuenta."}</p></div>
-      <div className="foot">Acceso restringido a personal autorizado · GOES 2026</div>
-    </div>
-    <div className="login-panel"><div className="login-card">
-      <h2>Nueva contraseña</h2>
+  return (<div className="login-wrap-glow">
+    <div className="login-glow-card">
+      <div className="crest-mini">
+        <div className="mark">M</div>
+        <small>MINISTERIO DE EDUCACIÓN · EL SALVADOR</small>
+      </div>
+      <h1>{modo==="primerIngreso"?"Configura tu nueva contraseña":"Restablece tu contraseña"}</h1>
+      <p className="sub" style={{textAlign:"center",marginTop:-10}}>{modo==="primerIngreso"?"Por seguridad, debes cambiar tu contraseña antes de continuar.":"Elige una nueva contraseña para tu cuenta."}</p>
       {msg&&<div className={"alert alert-"+(msg.k==="err"?"err":"ok")}>{msg.t}</div>}
       <div className="field"><label>Nueva contraseña</label><PasswordInput value={p1} onChange={e=>setP1(e.target.value)}/>
         <PasswordChecklist value={p1}/>
@@ -1294,7 +1323,8 @@ function CambiarPassword({ctx,modo}){
       <div className="field"><label>Confirmar nueva contraseña</label><PasswordInput value={p2} onChange={e=>setP2(e.target.value)} onKeyDown={e=>e.key==="Enter"&&guardar()}/></div>
       <button className="btn btn-primary" disabled={loading} onClick={guardar}>{loading?"Guardando…":"Guardar contraseña"}</button>
       {modo==="recuperacion" && <p className="hint"><span className="link" onClick={async()=>{setRecoveryUserId(null);await supabase.auth.signOut();}}>Cancelar y volver a iniciar sesión</span></p>}
-    </div></div>
+      <div className="foot-mini">Acceso restringido a personal autorizado · GOES 2026 <span className="ver mono">V{APP_VERSION}</span></div>
+    </div>
   </div>);
 }
 
@@ -1386,10 +1416,24 @@ function AgentStatusControl({ctx}){
 
 /* ============================ SHELL ============================ */
 function Shell({ctx,toast}){
-  const {session,view,setView,theme,setTheme,setSession,patchUser,filtro,setFiltro,pausa,setPausa,bumpDaily,campaigns}=ctx;
+  const {session,view,setView,theme,setTheme,setSession,patchUser,filtro,setFiltro,pausa,setPausa,bumpDaily,campaigns,records,users}=ctx;
   const can=CAN[session.rol];
   const [cambiarPass,setCambiarPass]=useState(false);
   const [menuOpen,setMenuOpen]=useState(false);
+  const [saludAlerta,setSaludAlerta]=useState(false);
+  useEffect(()=>{
+    if(!can.salud||!supabase) return;
+    let cancelado=false;
+    const revisar=async()=>{
+      const s=await medirSaludSistema();
+      if(cancelado) return;
+      const syncVieja=s.ultimaSincronizacionCentros && (Date.now()-s.ultimaSincronizacionCentros)>48*3600*1000;
+      setSaludAlerta(!s.conexionOk || syncVieja);
+    };
+    revisar();
+    const id=setInterval(revisar,60000);
+    return ()=>{cancelado=true;clearInterval(id);};
+  },[can.salud]);
   const logout=async()=>{
     const t=Date.now();const today=dayKey();
     if(session.loginSince) bumpDaily(session.id,today,"loginSec",(t-session.loginSince)/1000);
@@ -1402,16 +1446,31 @@ function Shell({ctx,toast}){
     if(supabase) await supabase.auth.signOut();
     setSession(null);
   };
+  const pendientesBandeja=(()=>{
+    if(!can.bandeja) return 0;
+    const isAgent=session.rol==="Agente";
+    const misCamp=campaigns.filter(c=>overlaps(c.fechaDesde,c.fechaHasta,filtro.desde,filtro.hasta) && c.estado==="En curso" && (!isAgent || Object.values(getAssign(c)).includes(session.id)));
+    let total=0;
+    misCamp.forEach(c=>{
+      const asg=getAssign(c);
+      const codigos=c.schoolCodes.filter(code=>isAgent?asg[code]===session.id:true);
+      codigos.forEach(code=>{
+        const r=records.find(x=>x.campaignId===c.id&&x.codigo===code);
+        if(!r||r.estado==="Pendiente") total++;
+      });
+    });
+    return total;
+  })();
   const nav=[
-    {k:"bandeja",ic:"📞",t:"Bandeja de llamadas",show:can.bandeja},
-    {k:"campanas",ic:"🎯",t:"Campañas",show:can.campanas},
+    {k:"bandeja",ic:"📞",t:"Bandeja de llamadas",show:can.bandeja,count:pendientesBandeja},
+    {k:"campanas",ic:"🎯",t:"Campañas",show:can.campanas,count:campaigns.filter(c=>c.estado==="En curso").length},
     {k:"borradores",ic:"📝",t:"Borradores",show:can.borradores,count:campaigns.filter(c=>c.estado==="Borrador").length},
     {k:"consulta",ic:"🔎",t:"Consulta y edición",show:can.consulta},
     {k:"equipo",ic:"🧑‍💼",t:"Equipo de agentes",show:can.equipo},
     {k:"dashboard",ic:"📊",t:"Dashboard de avance",show:can.dashboard},
-    {k:"admin",ic:"🛡️",t:"Administración",show:can.admin},
+    {k:"admin",ic:"🛡️",t:"Administración",show:can.admin,count:users.filter(u=>u.estado==="pendiente").length},
     {k:"logs",ic:"📜",t:"Logs de usuarios",show:can.logs},
-    {k:"salud",ic:"💚",t:"Salud del sistema",show:can.salud},
+    {k:"salud",ic:"💚",t:"Salud del sistema",show:can.salud,alerta:saludAlerta},
   ].filter(x=>x.show);
   const titles={bandeja:"Bandeja de llamadas",campanas:"Campañas",borradores:"Borradores de campaña",consulta:"Consulta y edición (inbound)",equipo:"Equipo de agentes",dashboard:"Dashboard de avance",admin:"Administración de usuarios",logs:"Logs de usuarios",salud:"Salud del sistema"};
   const withWeek=["bandeja","campanas","consulta","dashboard"].includes(view);
@@ -1425,7 +1484,7 @@ function Shell({ctx,toast}){
     <aside className={"sidebar"+(menuOpen?" open":"")}>
       <div className="brand"><div className="mark">M</div><div><b>Gestión de Llamadas</b><span>MINED · Centro de Monitoreo</span></div></div>
       <div className="nav-label">Módulos</div>
-      {nav.map(n=><button key={n.k} className={"nav-item"+(view===n.k?" active":"")} onClick={()=>{setView(n.k);setMenuOpen(false);}}><span className="ico">{n.ic}</span>{n.t}{n.count!=null && <span style={{marginLeft:4}}>({n.count})</span>}</button>)}
+      {nav.map(n=><button key={n.k} className={"nav-item"+(view===n.k?" active":"")} onClick={()=>{setView(n.k);setMenuOpen(false);}}><span className="ico">{n.ic}</span>{n.t}{n.count!=null && <span style={{marginLeft:4}}>({n.count})</span>}{n.alerta && <span className="alerta-dot" title="Se detectó una irregularidad"/>}</button>)}
       <div className="spacer"/>
       <div className="me"><div className="avatar">{initials}</div><div className="grow"><b>{session.nombre}</b><span>{session.rol}</span></div></div>
       <button className="nav-item" style={{marginTop:8}} onClick={()=>{setCambiarPass(true);setMenuOpen(false);}}><span className="ico">🔑</span>Cambiar contraseña</button>
