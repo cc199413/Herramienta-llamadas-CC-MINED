@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Consola de Llamadas · MINED</title>
+<title>Plataforma para gestión de llamadas · MINED</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -13,7 +13,8 @@
     --surface:#ffffff; --surface-2:#f6f8fb; --surface-3:#eef2f8;
     --border:#dce2ec; --border-strong:#c6cedb;
     --text:#101b2e; --text-dim:#5a6678; --text-faint:#8c97a8;
-    --navy:#13294b; --navy-2:#1c3a66; --navy-ink:#e9eefb;
+    --navy:#111e60; --navy-2:#1c2e7a; --navy-ink:#e9eefb;
+    --inst-tan:#c9a892; --inst-tan-ink:#3a2c22; --inst-slate:#313945;
     --accent:#f2a900; --accent-ink:#3a2a00;
     --success:#0f9d58; --success-bg:#e3f4ea;
     --danger:#d9342b; --danger-bg:#fbe6e4;
@@ -33,7 +34,8 @@
     --surface:#111d31; --surface-2:#15233c; --surface-3:#1a2c49;
     --border:#24344f; --border-strong:#32466a;
     --text:#e7edf8; --text-dim:#9aa8bf; --text-faint:#6f7e96;
-    --navy:#0a1322; --navy-2:#12243f; --navy-ink:#e9eefb;
+    --navy:#0a1342; --navy-2:#12205c; --navy-ink:#e9eefb;
+    --inst-tan:#c9a892; --inst-tan-ink:#3a2c22; --inst-slate:#313945;
     --accent:#ffb71a; --accent-ink:#2a1d00;
     --success:#2fbd77; --success-bg:#10301f;
     --danger:#f0584e; --danger-bg:#3a1310;
@@ -61,21 +63,23 @@
 
   /* ---------- Login ---------- */
   .login-wrap{min-height:100%;display:grid;grid-template-columns:1.05fr .95fr}
-  @media(max-width:860px){.login-wrap{grid-template-columns:1fr}.login-hero{display:none}}
+  @media(max-width:860px){.login-wrap{grid-template-columns:1fr}.login-hero{padding:32px 24px 26px;min-height:auto}.login-hero h1{font-size:30px}.login-hero .tan-strip{height:5px}}
   .login-hero{
     background:
-      radial-gradient(900px 500px at 12% -10%, rgba(242,169,0,.18), transparent 60%),
-      linear-gradient(160deg,var(--navy),var(--navy-2));
+      radial-gradient(720px 420px at 100% 0%, color-mix(in srgb,var(--inst-tan) 22%, transparent), transparent 62%),
+      linear-gradient(165deg,var(--navy),var(--navy-2));
     color:var(--navy-ink);padding:54px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;
   }
+  .login-hero .tan-strip{position:absolute;left:0;right:0;top:0;height:7px;background:linear-gradient(90deg,var(--inst-tan),var(--accent))}
   .login-hero .crest{display:flex;align-items:center;gap:12px;font-weight:600;letter-spacing:.02em}
-  .login-hero .crest .mark{width:38px;height:38px;border-radius:10px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:"Space Grotesk";font-weight:700;font-size:18px}
-  .login-hero h1{font-size:46px;line-height:1.02;margin:0 0 14px;font-weight:700}
+  .login-hero .crest .mark{width:38px;height:38px;border-radius:10px;background:var(--inst-tan);color:var(--inst-tan-ink);display:grid;place-items:center;font-family:"Space Grotesk";font-weight:700;font-size:18px}
+  .login-hero h1{font-size:40px;line-height:1.08;margin:0 0 14px;font-weight:700}
   .login-hero .lead{color:#c7d2e8;max-width:30ch;font-size:15px}
   .pulse-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}
   .pulse{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:7px 12px;font-size:12.5px;color:#dbe4f3}
   .pulse i{width:8px;height:8px;border-radius:50%;display:inline-block}
-  .login-hero .foot{color:#8ca0c2;font-size:12px}
+  .login-hero .foot{color:#8ca0c2;font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .login-hero .foot .ver{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:3px 10px;font-family:var(--mono);color:#dbe4f3}
   .ticker{position:absolute;inset:auto -40px 120px -40px;opacity:.07;font-family:var(--mono);font-size:13px;white-space:nowrap;pointer-events:none}
 
   .login-panel{display:flex;align-items:center;justify-content:center;padding:40px 28px;background:var(--surface)}
@@ -106,7 +110,21 @@
 
   /* ---------- Shell ---------- */
   .shell{display:grid;grid-template-columns:248px 1fr;min-height:100%}
-  @media(max-width:780px){.shell{grid-template-columns:1fr}.sidebar{display:none}}
+  .mobile-topbar{display:none}
+  .sidebar-backdrop{display:none}
+  @media(max-width:780px){
+    .shell{grid-template-columns:1fr}
+    .mobile-topbar{display:flex;align-items:center;gap:12px;padding:12px 16px;background:linear-gradient(180deg,var(--navy),var(--navy-2));color:var(--navy-ink);position:sticky;top:0;z-index:40}
+    .mobile-topbar .hamburger{width:38px;height:38px;border-radius:9px;background:rgba(255,255,255,.1);display:grid;place-items:center;flex:none;font-size:18px;color:#fff}
+    .mobile-topbar b{font-family:"Space Grotesk";font-size:14.5px}
+    .sidebar{position:fixed;left:0;top:0;bottom:0;width:270px;max-width:82vw;transform:translateX(-100%);transition:transform .22s ease;z-index:60;box-shadow:var(--shadow-lg)}
+    .sidebar.open{transform:translateX(0)}
+    .sidebar-backdrop.open{display:block;position:fixed;inset:0;background:rgba(6,10,20,.5);z-index:50}
+    .content{padding:16px 14px 50px}
+    .topbar{padding:12px 14px;flex-wrap:wrap}
+    .topbar .seg{flex-wrap:wrap}
+    .topbar .spacer{flex-basis:100%;height:0}
+  }
   .sidebar{background:linear-gradient(180deg,var(--navy),var(--navy-2));color:var(--navy-ink);display:flex;flex-direction:column;padding:18px 14px;position:sticky;top:0;height:100vh}
   .brand{display:flex;align-items:center;gap:11px;padding:6px 8px 18px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:14px}
   .brand .mark{width:34px;height:34px;border-radius:9px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:"Space Grotesk";font-weight:700}
@@ -136,7 +154,8 @@
   /* ---------- Generic ---------- */
   .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow)}
   .card-pad{padding:18px}
-  .grid{display:grid;gap:16px}
+  .grid{display:grid;gap:16px;min-width:0}
+  .grid>*{min-width:0}
   .row{display:flex;gap:16px;flex-wrap:wrap}
   .stat{display:flex;flex-direction:column;gap:6px}
   .stat .k{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);font-weight:600}
@@ -145,6 +164,8 @@
   .section-title{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);font-weight:600;margin:6px 0 12px}
 
   table{width:100%;border-collapse:collapse;font-size:13.5px}
+  .split-360{grid-template-columns:360px 1fr}
+  @media(max-width:720px){.split-360{grid-template-columns:1fr}}
   th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);font-weight:600;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--surface-2);position:sticky;top:0}
   td{padding:11px 12px;border-bottom:1px solid var(--grid);vertical-align:middle}
   tr.clickable{cursor:pointer}
@@ -181,6 +202,7 @@
   @keyframes blink{50%{opacity:.25}}
 
   .modal-bg{position:fixed;inset:0;background:rgba(8,14,26,.55);backdrop-filter:blur(3px);display:grid;place-items:center;z-index:60;padding:20px}
+  @media(max-width:480px){.modal-bg{padding:8px}.modal{max-height:94vh}}
   .modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-lg);width:100%;max-width:760px;max-height:88vh;overflow:auto}
   .modal-head{display:flex;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:1}
   .modal-head h3{font-size:17px}
@@ -251,7 +273,7 @@
 const {useState,useEffect,useMemo,useRef} = React;
 
 /* Número de versión mostrado en la barra lateral. Súbelo con cada entrega. */
-const APP_VERSION = "1.4";
+const APP_VERSION = "1.5";
 
 /* ============================ SUPABASE (conexión real) ============================
    Project URL y Publishable key: son seguras de tener aquí, a la vista, en el
@@ -1189,17 +1211,12 @@ function Login({ctx}){
 
   return (<div className="login-wrap">
     <div className="login-hero">
+      <div className="tan-strip"/>
       <div className="crest"><div className="mark">M</div>Ministerio de Educación · El Salvador</div>
       <div>
-        <h1>Actividades de Centros Educativos</h1>
-        <p className="lead">Levantamiento semanal por teléfono: asigna centros, registra actividades y da seguimiento en tiempo real.</p>
-        <div className="pulse-row">
-          <span className="pulse"><i style={{background:"#2fbd77"}}/>Bandeja por agente</span>
-          <span className="pulse"><i style={{background:"#ffb71a"}}/>Registro por día o período</span>
-          <span className="pulse"><i style={{background:"#5b8def"}}/>Consulta y edición</span>
-        </div>
+        <h1>Plataforma para gestión de llamadas</h1>
       </div>
-      <div className="foot">Acceso restringido a personal autorizado · GOES 2026</div>
+      <div className="foot"><span>Acceso restringido a personal autorizado · GOES 2026</span><span className="ver mono">V{APP_VERSION}</span></div>
       <div className="ticker mono">12345 · Contactado · 3 actividades — 12348 · Llamar nuevamente — 12350 · Contactado · 1 actividad — 12347 · No contestó —</div>
     </div>
     <div className="login-panel"><div className="login-card">
@@ -1372,6 +1389,7 @@ function Shell({ctx,toast}){
   const {session,view,setView,theme,setTheme,setSession,patchUser,filtro,setFiltro,pausa,setPausa,bumpDaily,campaigns}=ctx;
   const can=CAN[session.rol];
   const [cambiarPass,setCambiarPass]=useState(false);
+  const [menuOpen,setMenuOpen]=useState(false);
   const logout=async()=>{
     const t=Date.now();const today=dayKey();
     if(session.loginSince) bumpDaily(session.id,today,"loginSec",(t-session.loginSince)/1000);
@@ -1399,13 +1417,18 @@ function Shell({ctx,toast}){
   const withWeek=["bandeja","campanas","consulta","dashboard"].includes(view);
   const initials=session.nombre.split(" ").map(x=>x[0]).slice(0,2).join("");
   return (<div className="shell">
-    <aside className="sidebar">
-      <div className="brand"><div className="mark">M</div><div><b>Actividades CE</b><span>MINED · Centro de Monitoreo</span></div></div>
+    <div className="mobile-topbar">
+      <button className="hamburger" onClick={()=>setMenuOpen(true)} aria-label="Abrir menú">☰</button>
+      <b>Gestión de Llamadas</b>
+    </div>
+    <div className={"sidebar-backdrop"+(menuOpen?" open":"")} onClick={()=>setMenuOpen(false)}/>
+    <aside className={"sidebar"+(menuOpen?" open":"")}>
+      <div className="brand"><div className="mark">M</div><div><b>Gestión de Llamadas</b><span>MINED · Centro de Monitoreo</span></div></div>
       <div className="nav-label">Módulos</div>
-      {nav.map(n=><button key={n.k} className={"nav-item"+(view===n.k?" active":"")} onClick={()=>setView(n.k)}><span className="ico">{n.ic}</span>{n.t}{n.count!=null && <span style={{marginLeft:4}}>({n.count})</span>}</button>)}
+      {nav.map(n=><button key={n.k} className={"nav-item"+(view===n.k?" active":"")} onClick={()=>{setView(n.k);setMenuOpen(false);}}><span className="ico">{n.ic}</span>{n.t}{n.count!=null && <span style={{marginLeft:4}}>({n.count})</span>}</button>)}
       <div className="spacer"/>
       <div className="me"><div className="avatar">{initials}</div><div className="grow"><b>{session.nombre}</b><span>{session.rol}</span></div></div>
-      <button className="nav-item" style={{marginTop:8}} onClick={()=>setCambiarPass(true)}><span className="ico">🔑</span>Cambiar contraseña</button>
+      <button className="nav-item" style={{marginTop:8}} onClick={()=>{setCambiarPass(true);setMenuOpen(false);}}><span className="ico">🔑</span>Cambiar contraseña</button>
       <button className="nav-item" onClick={logout}><span className="ico">⎋</span>Cerrar sesión</button>
       <div style={{textAlign:"center",padding:"10px 0 4px",fontSize:11,color:"var(--text-faint)"}}>V{APP_VERSION}</div>
     </aside>
@@ -2468,7 +2491,7 @@ function Consulta({ctx}){
     if(!t)return base.slice(0,8);
     return base.filter(s=>_norm(s.nombre).includes(t)||_norm(s.codigo).includes(t)||_norm(s.departamento).includes(t)||_norm(s.municipio).includes(t)).slice(0,30);
   },[q,schools,campSel,campaigns]);
-  return (<div className="grid" style={{gridTemplateColumns:"360px 1fr",alignItems:"start"}}>
+  return (<div className="grid split-360" style={{alignItems:"start"}}>
     <div className="grid">
       <div className="field" style={{margin:0}}><label>Campaña</label>
         <select className="input" value={campSel} onChange={e=>setCampSel(e.target.value)}>
