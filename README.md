@@ -1,3 +1,32 @@
+# Plataforma para gestión de llamadas · MINED
+
+## Ambientes
+
+| Ambiente | Proyecto Supabase | Project ref | Archivo de la app |
+|---|---|---|---|
+| **Producción** (uso real del call center) | Operacion CC MINED | `lrjkphiprqbfvhdqjijh` | `registro-actividades-ce.html` (raíz del repo) |
+| **Staging** (pruebas antes de desplegar) | Prueba - Operacion CC MINED | `enfkzbdjxxooiolstjyn` | `staging/registro-actividades-ce.html` |
+
+URLs publicadas (GitHub Pages):
+- Producción: `https://cc199413.github.io/Herramienta-llamadas-CC-MINED/registro-actividades-ce.html`
+- Staging: `https://cc199413.github.io/Herramienta-llamadas-CC-MINED/staging/registro-actividades-ce.html`
+
+La app detecta sola en cuál ambiente está corriendo (comparando `SUPABASE_URL` contra el project ref de producción) y muestra un distintivo visual **"🧪 ENTORNO DE PRUEBA"** en la parte superior cuando NO es producción — no requiere configuración manual.
+
+Ambos ambientes son proyectos de Supabase completamente independientes (base de datos, Auth y Edge Functions separadas) — se pueden usar en simultáneo sin ningún riesgo para producción.
+
+### Cómo reconstruir un ambiente desde cero (útil si algún día hay que rehacer staging, o recuperarse de un desastre en producción)
+
+Corre estos archivos SQL, **en este orden**, en el SQL Editor (o vía `psql`) del proyecto de Supabase:
+
+1. `schema.sql` — estructura de `centros_escolares` y su trigger de `sincronizado_en`.
+2. El resto de tablas operativas (`profiles`, `campanas`, `campana_agentes`, `registros`, `tiempos_diarios`, `configuracion`, `bitacora`) y sus políticas RLS — exporta la estructura actual desde el proyecto de producción con `pg_dump --schema-only --no-owner --no-privileges --schema=public` (ver connection string en el Dashboard → Connect → **Session pooler**; el modo de conexión directa suele fallar por resolución DNS/IPv6 desde redes de oficina).
+3. **`migracion_permisos.sql`** — sin este paso, todas las consultas fallan con "permission denied" o, en el login de la app, con el mensaje engañoso "No se encontró tu perfil", aunque el esquema y las políticas RLS estén perfectos. Supabase revoca los privilegios por defecto en cualquier proyecto nuevo.
+4. Cargar el catálogo de `centros_escolares` (ver sección de sincronización más abajo, o una copia puntual con `\copy` desde producción para un ambiente de prueba).
+5. Desplegar las Edge Functions (`supabase/functions/crear-usuario`, `supabase/functions/verificar-correo`) con `--no-verify-jwt`, apuntando al proyecto correcto con `--project-ref` (no hace falta `supabase link` — se puede pasar el ref directo en cada comando para no arriesgarse a desplegar al proyecto equivocado).
+
+---
+
 # Sincronización: Google Sheet de Centros Escolares → Supabase
 
 Este paquete copia el catálogo de Centros Escolares desde tu Google Sheet (fuente
