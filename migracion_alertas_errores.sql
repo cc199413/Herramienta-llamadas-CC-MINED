@@ -52,6 +52,14 @@ with check (rol_actual() in ('Administrador','Team leader','Supervisor'));
 
 create index if not exists alertas_errores_revisado_idx on public.alertas_errores (revisado, creado_en desc);
 
+-- ----------------------------------------------------------------------------
+-- Habilita Realtime sobre esta tabla, para que el módulo "Alertas" se
+-- actualice al instante en pantalla (Team leader/Supervisor/Administrador)
+-- apenas se registre un error, sin esperar al sondeo de respaldo (45s) ni
+-- tener que refrescar la página.
+-- ----------------------------------------------------------------------------
+alter publication supabase_realtime add table public.alertas_errores;
+
 -- ============================================================================
 -- Verificación después de correr este archivo:
 --
@@ -60,4 +68,7 @@ create index if not exists alertas_errores_revisado_idx on public.alertas_errore
 --
 --   select policyname, cmd from pg_policies where tablename = 'alertas_errores';
 --   -- Debe devolver 3 filas (insert, select, update).
+--
+--   select tablename from pg_publication_tables where pubname = 'supabase_realtime';
+--   -- Debe incluir "alertas_errores" en la lista.
 -- ============================================================================
