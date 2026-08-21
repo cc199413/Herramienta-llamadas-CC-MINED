@@ -1204,7 +1204,7 @@ function rowToSchool(row){
   const m={};Object.keys(row).forEach(k=>{m[_norm(k)]=row[k];});
   const get=(...res)=>{for(const k of Object.keys(m)){if(res.some(rx=>rx.test(k)))return m[k];}return "";};
   const truthy=v=>/^(si|s[ií]|true|verdadero|1|x|yes)$/i.test(String(v).trim());
-  const tels=[];Object.keys(m).forEach(k=>{if(/(telefono|tel\d|fono|movil|celular|contacto)/.test(k)){String(m[k]).split(/[\/,;|]+/).forEach(t=>{t=String(t).trim();if(t)tels.push(t);});}});
+  const tels=[];Object.keys(m).forEach(k=>{if(/(telefono|tel\d|fono|movil|celular|contacto)/.test(k) && !/responsable|monitor/.test(k)){String(m[k]).split(/[\/,;|]+/).forEach(t=>{t=String(t).trim();if(t)tels.push(t);});}});
   const fase=String(get(/fase/)||"").trim();
   return {codigo:String(get(/^codigo/,/codigo/,/^code/)||"").trim(),nombre:String(get(/nombre/,/^centroeducativo/,/^centroescolar/,/^centro/,/escuela/)||"").trim(),
     departamento:String(get(/departamento/,/depto/)||"").trim(),municipio:String(get(/municipio/)||"").trim(),distrito:String(get(/distrito/)||"").trim(),
@@ -1217,12 +1217,39 @@ function parseSchoolFile(file,cb){
   r.onerror=()=>cb(new Error("No se pudo leer el archivo."));
   r.readAsArrayBuffer(file);
 }
+/* Igual que parseSchoolFile, pero en UNA sola pasada también extrae la información de referencia
+   opcional (Hora de inicio, Responsables, Monitor) de las mismas filas, si el archivo las trae — para
+   no obligar a cargar dos archivos separados al crear una campaña especial. */
+function parseSchoolConInfoExtraFile(file,cb){
+  if(typeof XLSX==="undefined")return cb(new Error("No se cargó el lector de archivos."));
+  const r=new FileReader();
+  r.onload=e=>{try{
+    const wb=XLSX.read(new Uint8Array(e.target.result),{type:"array"});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{defval:""});
+    const combinadas=rows.map(row=>({escuela:rowToSchool(row),info:rowToInfoExtra(row)}));
+    const validas=combinadas.filter(c=>c.escuela.codigo&&c.escuela.nombre);
+    cb(null,{validas,total:rows.length,omitidos:combinadas.length-validas.length,hoja:wb.SheetNames[0]});
+  }catch(err){cb(err);}};
+  r.onerror=()=>cb(new Error("No se pudo leer el archivo."));
+  r.readAsArrayBuffer(file);
+}
 function downloadTemplate(){
   const headers=["Código","Nombre del Centro Educativo","Departamento","Municipio","Distrito","Teléfono 1","Teléfono 2","Programa","Modernización","Fase","Centro Control"];
   const ej=["12345","Centro Educativo Ejemplo","San Salvador","San Salvador","San Salvador Centro","22001122","78001122","Despega","Sí","2","No"];
   const csv=[headers.join(","),ej.join(",")].join("\n");
   const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8;"});
   const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="plantilla_centros_educativos.csv";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+}
+/* Igual que downloadTemplate, pero con las columnas de información adicional incluidas también, para
+   campañas especiales que quieran cargar todo (selección de centros + Hora de inicio/Responsables/
+   Monitor) en un solo archivo. */
+function downloadTemplateCampanaConInfoExtra(){
+  const headers=["Código","Nombre del Centro Educativo","Departamento","Municipio","Distrito","Teléfono","Hora de inicio","Responsable 1","Teléfono Responsable 1","Responsable 2","Teléfono Responsable 2","Monitor","Teléfono Monitor"];
+  const ej=["12345","Centro Educativo Ejemplo","San Salvador","San Salvador","San Salvador Centro","22001122","08:00","Juana Pérez","7000-0001","Carlos López","7000-0002","María Ramírez","7000-0003"];
+  const csv=[headers.join(","),ej.join(",")].join("\n");
+  const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="plantilla_campana_con_info_extra.csv";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
 }
 
 /* ---- lectura de archivo CSV/Excel para creación masiva de usuarios ---- */
@@ -1266,26 +1293,6 @@ function rowToInfoExtra(row){
     monitor:find(k=>/monitor/.test(k)&&!esTel(k)),
     telMonitor:find(k=>/monitor/.test(k)&&esTel(k)),
   };
-}
-function parseInfoExtraFile(file,cb){
-  if(typeof XLSX==="undefined")return cb(new Error("No se cargó el lector de archivos."));
-  const r=new FileReader();
-  r.onload=e=>{try{
-    const wb=XLSX.read(new Uint8Array(e.target.result),{type:"array"});
-    const ws=wb.Sheets[wb.SheetNames[0]];
-    const rows=XLSX.utils.sheet_to_json(ws,{defval:""});
-    const filas=rows.map(rowToInfoExtra).filter(f=>f.codigo);
-    cb(null,{filas,total:rows.length,omitidos:rows.length-filas.length,hoja:wb.SheetNames[0]});
-  }catch(err){cb(err);}};
-  r.onerror=()=>cb(new Error("No se pudo leer el archivo."));
-  r.readAsArrayBuffer(file);
-}
-function downloadTemplateInfoExtra(){
-  const headers=["Código","Hora de inicio","Responsable 1","Teléfono Responsable 1","Responsable 2","Teléfono Responsable 2","Monitor","Teléfono Monitor"];
-  const ej=["10011","08:00","Juana Pérez","7000-0001","Carlos López","7000-0002","María Ramírez","7000-0003"];
-  const csv=[headers.join(","),ej.join(",")].join("\n");
-  const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8;"});
-  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="plantilla_info_extra.csv";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
 }
 function downloadTemplateUsuarios(){
   const headers=["Nombre","Correo","Rol","Turno"];
@@ -3233,7 +3240,6 @@ function CampaignWizard({ctx,onClose,borradorInicial}){
   // no basta, hace falta una respuesta específica que el propio agente confirma antes de cerrar.
   const [cierreAutomatico,setCierreAutomatico]=useState(bd.cierreAutomatico!==false);
   const [infoExtraPorCodigo,setInfoExtraPorCodigo]=useState({}); // información de referencia por centro (opcional), ver rowToInfoExtra
-  const [infoExtraUpInfo,setInfoExtraUpInfo]=useState(null);
   const modoFecha=fDesde===fHasta?"dia":"periodo";
   const setModoFecha=m=>{ if(m==="dia") setFHasta(fDesde); else if(fHasta===fDesde) setFHasta(addDays(fDesde,6)); };
   // preguntas de la campaña (100% parametrizables; reemplazan cualquier esquema fijo de "actividad")
@@ -3295,11 +3301,38 @@ function CampaignWizard({ctx,onClose,borradorInicial}){
   const grupoOptions={departamento:DEPTOS,municipio:[...new Set(schools.map(s=>s.municipio))].sort(ordenEs),distrito:[...new Set(schools.map(s=>s.distrito))].sort(ordenEs),fase:["1","2","3"],programa:[],modernizacion:[],control:[]};
   const MULTI_TIPOS=["departamento","municipio","distrito"];
 
-  const onFile=file=>{if(!file)return;setUpInfo({nombre:file.name,cargando:true});parseSchoolFile(file,(err,res)=>{if(err){setUploaded([]);setUpInfo({nombre:file.name,error:err.message});return;}const vistos={},lista=[];res.validos.forEach(s=>{if(!vistos[s.codigo]){vistos[s.codigo]=1;lista.push(s);}});setUploaded(lista);setUpInfo({nombre:file.name,cargados:lista.length,omitidos:res.omitidos,hoja:res.hoja});});};
-  const onFileInfoExtra=file=>{if(!file)return;setInfoExtraUpInfo({nombre:file.name,cargando:true});parseInfoExtraFile(file,(err,res)=>{if(err){setInfoExtraPorCodigo({});setInfoExtraUpInfo({nombre:file.name,error:err.message});return;}const mapa={};res.filas.forEach(f=>{mapa[f.codigo]=f;});setInfoExtraPorCodigo(mapa);setInfoExtraUpInfo({nombre:file.name,cargados:Object.keys(mapa).length,omitidos:res.omitidos,hoja:res.hoja});});};
+  // Un solo archivo hace las dos cosas: selecciona los centros Y, si el archivo trae esas columnas,
+  // también carga la información de referencia (Hora de inicio, Responsables, Monitor) por centro —
+  // ya no hace falta cargar dos archivos separados para una campaña especial.
+  const onFile=file=>{
+    if(!file)return;
+    setUpInfo({nombre:file.name,cargando:true});
+    parseSchoolConInfoExtraFile(file,(err,res)=>{
+      if(err){ setUploaded([]); setInfoExtraPorCodigo({}); setUpInfo({nombre:file.name,error:err.message}); return; }
+      const vistos={},lista=[],infoMapa={};
+      const CAMPOS_INFO_EXTRA=["horaInicio","responsable1","telResponsable1","responsable2","telResponsable2","monitor","telMonitor"];
+      res.validas.forEach(({escuela,info})=>{
+        if(vistos[escuela.codigo]) return;
+        vistos[escuela.codigo]=1; lista.push(escuela);
+        if(CAMPOS_INFO_EXTRA.some(c=>info[c])) infoMapa[escuela.codigo]=info; // solo se guarda si trae algo, para no afectar campañas que no usan esto
+      });
+      setUploaded(lista);
+      setInfoExtraPorCodigo(infoMapa);
+      setUpInfo({nombre:file.name,cargados:lista.length,omitidos:res.omitidos,hoja:res.hoja,conInfoExtra:Object.keys(infoMapa).length});
+    });
+  };
 
   const [creando,setCreando]=useState(false);
-  const launch=async()=>{
+  const [pedirConfirmIncompleta,setPedirConfirmIncompleta]=useState(false);
+  const CAMPOS_INFO_EXTRA=["horaInicio","responsable1","telResponsable1","responsable2","telResponsable2","monitor","telMonitor"];
+  // Cuenta cuántos de los centros seleccionados no tienen la información adicional completa —
+  // solo tiene sentido si se cargó algo de información adicional para empezar (si nadie la usó, 0).
+  const incompletosInfoExtra=Object.keys(infoExtraPorCodigo).length ? selectedSchools.filter(s=>{
+    const info=infoExtraPorCodigo[s.codigo];
+    if(!info) return true;
+    return CAMPOS_INFO_EXTRA.some(c=>!info[c]);
+  }).length : 0;
+  const crearCampanaFinal=async()=>{
     const codes=selectedSchools.map(s=>s.codigo);const agentIds=finalAgents.map(a=>a.id);
     if(selMode==="archivo"&&uploaded.length){setSchools(prev=>{const map={};prev.forEach(s=>map[s.codigo]=s);uploaded.forEach(s=>map[s.codigo]={...map[s.codigo],...s});return Object.values(map);});}
     const camp={id:borradorId||uid("c"),titulo:titulo||"Campaña sin título",objetivo,fechaDesde:fDesde,fechaHasta:fHasta,maxIntentos:Number(maxIntentos)||DEFAULT_MAX_INTENTOS,
@@ -3317,6 +3350,12 @@ function CampaignWizard({ctx,onClose,borradorInicial}){
     registrarAccion(session.id,"crear_campana",`${session.nombre} creó la campaña «${camp.titulo}» (${codes.length} centros, ${agentIds.length} agentes)`);
     notify(`Campaña creada · ${codes.length} centros entre ${agentIds.length} agentes`);onClose();
   };
+  // Si falta información adicional en algunos centros, se PIDE CONFIRMACIÓN — nunca se bloquea la
+  // creación de la campaña por esto (la información adicional es de referencia, no obligatoria).
+  const launch=()=>{
+    if(incompletosInfoExtra>0){ setPedirConfirmIncompleta(true); return; }
+    crearCampanaFinal();
+  };
   const perAgent=finalAgents.length?Math.floor(selectedSchools.length/finalAgents.length):0;
   const resto=finalAgents.length?selectedSchools.length%finalAgents.length:0;
   const foot=<>
@@ -3324,7 +3363,7 @@ function CampaignWizard({ctx,onClose,borradorInicial}){
     {step<steps.length-1?<button className="btn btn-primary" onClick={()=>setStep(step+1)}>Siguiente</button>
       :<button className="btn btn-accent" disabled={!finalAgents.length||!selectedSchools.length||!titulo.trim()||creando} onClick={launch}>{creando?"Creando…":"Crear campaña"}</button>}
   </>;
-  return (<Modal title="Nueva campaña" onClose={onClose} wide foot={foot}>
+  return (<><Modal title="Nueva campaña" onClose={onClose} wide foot={foot}>
     <div className="stepper">{steps.map((s,i)=><div key={s} className={"step"+(i===step?" on":i<step?" done":"")}><b>{i<step?"✓":i+1}</b>{s}</div>)}</div>
     {continuandoBorrador && <small className="muted" style={{display:"block",marginBottom:10}}>💾 Continuando desde un borrador guardado.</small>}
 
@@ -3398,23 +3437,11 @@ function CampaignWizard({ctx,onClose,borradorInicial}){
           <div style={{fontSize:26,opacity:.6}}>📄</div><p style={{margin:"6px 0 12px",color:"var(--text-dim)"}}>Carga un archivo <b>CSV</b> o <b>Excel</b> con los centros educativos.</p>
           <label className="btn btn-primary btn-sm" style={{display:"inline-flex",cursor:"pointer"}}>Seleccionar archivo<input type="file" accept=".csv,.xlsx,.xls" style={{display:"none"}} onChange={e=>onFile(e.target.files[0])}/></label>
           <button className="btn btn-ghost btn-sm" style={{marginLeft:8}} onClick={downloadTemplate}>⬇ Descargar plantilla</button>
+          <button className="btn btn-ghost btn-sm" style={{marginLeft:8}} onClick={downloadTemplateCampanaConInfoExtra}>⬇ Plantilla con información adicional</button>
         </div>
-        <small className="muted" style={{display:"block",marginTop:8}}>Columnas reconocidas: Código, Nombre, Departamento, Municipio, Distrito, Teléfono(s), Programa, Modernización, Fase, Centro Control.</small>
-        {upInfo&&(upInfo.error?<div className="alert alert-err" style={{marginTop:10}}>No se pudo procesar «{upInfo.nombre}»: {upInfo.error}</div>:upInfo.cargando?<div className="alert alert-info" style={{marginTop:10}}>Procesando…</div>:<div className="alert alert-ok" style={{marginTop:10}}>«{upInfo.nombre}»: <b>{upInfo.cargados}</b> centros cargados{upInfo.omitidos>0&&<> · {upInfo.omitidos} omitidos</>}.</div>)}
+        <small className="muted" style={{display:"block",marginTop:8}}>Columnas reconocidas: Código, Nombre, Departamento, Municipio, Distrito, Teléfono(s), Programa, Modernización, Fase, Centro Control — y, opcionalmente en el mismo archivo, Hora de inicio, Responsable 1/2 + sus teléfonos, y Monitor + teléfono (para campañas especiales que necesiten mostrarle esa información al agente).</small>
+        {upInfo&&(upInfo.error?<div className="alert alert-err" style={{marginTop:10}}>No se pudo procesar «{upInfo.nombre}»: {upInfo.error}</div>:upInfo.cargando?<div className="alert alert-info" style={{marginTop:10}}>Procesando…</div>:<div className="alert alert-ok" style={{marginTop:10}}>«{upInfo.nombre}»: <b>{upInfo.cargados}</b> centros cargados{upInfo.omitidos>0&&<> · {upInfo.omitidos} omitidos</>}{upInfo.conInfoExtra>0&&<> · {upInfo.conInfoExtra} con información adicional (Hora de inicio/Responsables/Monitor)</>}.</div>)}
       </div>}
-
-      <div style={{margin:"18px 0 6px",borderTop:"1px solid var(--border)",paddingTop:14}}>
-        <label style={{fontWeight:600}}>Información adicional por centro (opcional)</label>
-        <p className="muted" style={{margin:"4px 0 10px"}}>Para campañas especiales que necesitan mostrarle al agente datos de referencia por centro (Hora de inicio, Responsables y Monitor, con sus teléfonos) — de solo lectura, no son preguntas a responder. Departamento y Nombre del centro no hace falta incluirlos aquí: ya vienen del catálogo, emparejados por Código.</p>
-        <div style={{border:"1.5px dashed var(--border-strong)",borderRadius:12,padding:18,background:"var(--surface-2)",textAlign:"center"}}>
-          <div style={{fontSize:26,opacity:.6}}>🗓️</div><p style={{margin:"6px 0 12px",color:"var(--text-dim)"}}>Carga un archivo <b>CSV</b> o <b>Excel</b> con esta información, uno por centro.</p>
-          <label className="btn btn-primary btn-sm" style={{display:"inline-flex",cursor:"pointer"}}>Seleccionar archivo<input type="file" accept=".csv,.xlsx,.xls" style={{display:"none"}} onChange={e=>onFileInfoExtra(e.target.files[0])}/></label>
-          <button className="btn btn-ghost btn-sm" style={{marginLeft:8}} onClick={downloadTemplateInfoExtra}>⬇ Descargar plantilla</button>
-        </div>
-        <small className="muted" style={{display:"block",marginTop:8}}>Columnas reconocidas: Código, Hora de inicio, Responsable 1, Teléfono Responsable 1, Responsable 2, Teléfono Responsable 2, Monitor, Teléfono Monitor.</small>
-        {infoExtraUpInfo&&(infoExtraUpInfo.error?<div className="alert alert-err" style={{marginTop:10}}>No se pudo procesar «{infoExtraUpInfo.nombre}»: {infoExtraUpInfo.error}</div>:infoExtraUpInfo.cargando?<div className="alert alert-info" style={{marginTop:10}}>Procesando…</div>:<div className="alert alert-ok" style={{marginTop:10}}>«{infoExtraUpInfo.nombre}»: <b>{infoExtraUpInfo.cargados}</b> centro(s) con información adicional{infoExtraUpInfo.omitidos>0&&<> · {infoExtraUpInfo.omitidos} fila(s) omitidas (sin código)</>}.</div>)}
-        {Object.keys(infoExtraPorCodigo).length>0 && <small className="muted" style={{display:"block",marginTop:6}}>Se usará para cualquier centro seleccionado cuyo Código coincida con esta lista — los que no coincidan simplemente no tendrán esta información extra.</small>}
-      </div>
 
       <div className="tag" style={{margin:"6px 0 10px",display:"inline-block"}}>{selectedSchools.length} centros seleccionados</div>
       <div className="tbl-wrap scroll-y"><table><thead><tr>{selMode==="manual"&&<th></th>}<th>Código</th><th>Centro</th><th>Depto.</th><th>Teléfonos</th></tr></thead>
@@ -3457,7 +3484,12 @@ function CampaignWizard({ctx,onClose,borradorInicial}){
       </div>
       <div className="alert alert-info" style={{marginTop:14}}>«{titulo||"Campaña sin título"}» quedará <b>En curso</b> junto a las demás campañas activas (puedes gestionar varias en paralelo). Se cerrará por no contacto automáticamente tras {maxIntentos} intentos.</div>
     </div>}
-  </Modal>);
+  </Modal>
+  {pedirConfirmIncompleta && <Modal title="Información adicional incompleta" onClose={()=>setPedirConfirmIncompleta(false)} foot={<><button className="btn btn-ghost" onClick={()=>setPedirConfirmIncompleta(false)}>Cancelar</button><button className="btn btn-accent" onClick={()=>{setPedirConfirmIncompleta(false);crearCampanaFinal();}}>Crear de todas formas</button></>}>
+    <p style={{marginTop:0}}><b>{incompletosInfoExtra}</b> de {selectedSchools.length} centro(s) seleccionados no tienen completa la información adicional (Hora de inicio, Responsables o Monitor) — o no aparecen en el archivo cargado.</p>
+    <p style={{color:"var(--text-dim)"}}>La campaña se puede crear igual: a esos centros simplemente no se les mostrará esa información en la Bandeja, sin que eso les impida ser contactados normalmente.</p>
+  </Modal>}
+  </>);
 }
 
 /* ============================ CONSULTA Y EDICIÓN (INBOUND) ============================ */
